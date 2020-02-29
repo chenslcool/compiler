@@ -9,31 +9,102 @@
 %union {
     int type_int;
     float type_float;
-    double type_double;
+    double type_double; 
 }
 %token <type_int>INT 
 %token <type_float>FLOAT
-%token ADD SUB MUL DIV 
+%token ID /* char* ??*/
+%token SEMI COMMA ASSIGNOP RELOP PLUS MINUS STAR DIV AND OR DOT NOT TYPE LP RP LB RB LC RC STRUCT RETURN IF ELSE WHILE
 
-/* 非终结符为了更好的精度选double*/
-%type <type_float> Exp Factor Term
+%right ASSIGNOP
+%left OR
+%left AND
+%left RELOP
+%left PLUS MINUS
+%left STAR DIV
+%right NOT
+%left LP RP LB RB DOT
 
 %%
-Calc : /*empty*/
-    | Exp {printf("=%lf\n",$1);}
+Program : ExtDefList
     ;
-Exp : Factor
-    | Exp ADD Factor {$$ = $1 + $3;}
-    | Exp SUB Factor {$$ = $1 - $3;}
+ExtDefList : ExtDef ExtDefList
+    |
     ;
-Factor : Term
-    | Factor MUL Term {$$ = $1 * $3;}
-    | Factor DIV Term {$$ = $1 / $3;}
+ExtDef : Sepcifier ExtDecList SEMI
+    | Sepcifier SEMI
+    | Sepcifier FuncDec Compst
     ;
-Term : INT {$$ = $1;}
-    | FLOAT {$$ = $1;}
+ExtDecList : VarDec
+    | VarDec COMMA ExtDecList
     ;
-
+Sepcifier : TYPE
+    | StructSpecifier
+    ;
+StructSpecifier : STRUCT OptTag LC DefList RC
+    | STRUCT Tag
+    ;
+OptTag : ID
+    |
+    ;
+Tag : ID
+    ;
+VarDec : ID
+    | VarDec LB INT RB
+    ;
+FuncDec : ID LP VarList RP
+    | ID LP RP
+    ;
+VarList : ParamDec COMMA VarList
+    | ParamDec
+    ;
+ParamDec : Sepcifier VarDec
+    ;
+Compst : LC DefList StmtList RC
+    ;
+StmtList : Stmt StmtList
+    |
+    ;
+Stmt : Exp SEMI
+    | Compst
+    | RETURN Exp Stmt
+    | IF LP Exp RP Stmt
+    | IF LP Exp RP Stmt ELSE Stmt
+    | WHILE LP Exp RP Stmt
+    ;
+DefList : Def DefList
+    |
+    ;
+Def : Sepcifier DecList SEMI
+    ;
+DecList : Dec
+    | Dec COMMA DecList
+    ;
+Dec : VarDec
+    | VarDec ASSIGNOP Exp
+    ;
+Exp : Exp ASSIGNOP Exp
+    | Exp AND Exp
+    | Exp OR Exp
+    | Exp RELOP Exp
+    | Exp PLUS Exp
+    | Exp MINUS Exp
+    | Exp STAR Exp
+    | Exp DIV Exp
+    | LP Exp RP
+    | MINUS Exp
+    | NOT Exp
+    | ID LP Args RP
+    | ID LP RP
+    | Exp LB Exp RB
+    | Exp DOT ID
+    | ID
+    | INT
+    | FLOAT
+    ;
+Args : Exp COMMA Args
+    | Exp
+    ;
 %%
 
 void yyerror(char* msg){

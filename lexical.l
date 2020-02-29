@@ -34,35 +34,39 @@ id {_letter}(({_letter}|{digit})*)
 }
 
 ";" {
-    printf("SEMI\n");
+    // printf("SEMI\n");
+    return SEMI;
 }
 
 "," {
-    printf("COMMA\n");
+    // printf("COMMA\n");
+    return COMMA;
 }
 
 {relop} {
-    printf("RELOP:%s\n",yytext);
+    // printf("RELOP:%s\n",yytext);
+    return RELOP;
 }
 
 "=" {
-    printf("ASSIGNOP\n");
+    // printf("ASSIGNOP\n");
+    return ASSIGNOP;
 }
 
 
 "+" {
     // printf("PLUS\n");
-    return ADD;
+    return PLUS;
 }
 
 "-" {
     // printf("MINUS\n");
-    return SUB;
+    return MINUS;
 }
 
 "*" {
     // printf("STAR\n");
-    return MUL;
+    return STAR;
 }
 
 "/" {
@@ -71,67 +75,83 @@ id {_letter}(({_letter}|{digit})*)
 }
 
 "&&" {
-    printf("AND\n");
+    // printf("AND\n");
+    return AND;
 }
 
 "||" {
-    printf("OR\n");
+    // printf("OR\n");
+    return OR;
 }
 
 "!" {
-    printf("NOT\n");
+    // printf("NOT\n");
+    return NOT;
 }
 
 "." {
-    printf("DOT\n");
+    // printf("DOT\n");
+    return DOT;
 }
 
 (int)|(float) {
-    printf("TYPE:%s\n",yytext);
+    // printf("TYPE:%s\n",yytext);
+    return TYPE;
 }
 
 "(" {
-    printf("LP\n");
+    // printf("LP\n");
+    return LP;
 }
 
 ")" {
-    printf("RP\n");
+    // printf("RP\n");
+    return RP;
 }
 
 "[" {
-    printf("LB\n");
+    // printf("LB\n");
+    return LB;
 }
 
 "]" {
-    printf("RB\n");
+    // printf("RB\n");
+    return RB;
 }
 
 "{" {
-    printf("LC\n");
+    // printf("LC\n");
+    return LC;
 }
 
 "}" {
-    printf("RC\n");
+    // printf("RC\n");
+    return RC;
 }
 
 "struct" {
-    printf("STRUCT\n");
+    // printf("STRUCT\n");
+    return STRUCT;
 }
 
 "return" {
-    printf("RETURN\n");
+    // printf("RETURN\n");
+    return RETURN;
 }
 
 "if" {
-    printf("IF\n");
+    // printf("IF\n");
+    return IF;
 }
 
 "else" {
-    printf("ELSE\n");
+    // printf("ELSE\n");
+    return ELSE;
 }
 
 "while" {
-    printf("WHILE\n");
+    // printf("WHILE\n");
+    return WHILE;
 }
 
 {float} {
@@ -147,7 +167,9 @@ id {_letter}(({_letter}|{digit})*)
 }
 
 {id} {
-    printf("ID:%s\n",yytext);
+    // printf("ID:%s\n",yytext);
+    // TODO: add more information about id?
+    return ID;
 }
 
 . {
