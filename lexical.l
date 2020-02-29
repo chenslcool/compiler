@@ -1,6 +1,14 @@
 %{
-    int is_letterDigit(char c);
+    #include<stdio.h>
+    #include"syntax.tab.h"
+    int yycolumn = 1;
+    #define YY_USER_ACTION \
+        yylloc.first_line = yylloc.last_line = yylineno; \
+        yylloc.first_column = yycolumn; \
+        yylloc.last_column = yycolumn + yyleng - 1; \
+        yycolumn += yyleng;
 %}
+
 digit [0-9]
 digits {digit}+
 digit8 [0-7]
@@ -8,17 +16,21 @@ digit16 [0-9A-Fa-f]
 letter [a-zA-Z]
 _letter {letter}|(_)
 _letterDigit {_letter}|{digit}
-whiteSpace [ \n\t]
+whiteSpace [ \t]
 relop ("<")|("<=")|(">")|(">=")|("==")|("!=")
-decimal ([+-]?)(0|([1-9]({digit}*)))
-octal ([+-]?)0({digit8}+)
-hexical ([+-]?)(0[Xx])({digit16}+)
-float ([+-]?)({digits})(\.)({digits})
+decimal 0|([1-9]({digit}*))
+octal 0({digit8}+)
+hexical (0[Xx])({digit16}+)
+float ({digits})(\.)({digits})
 id {_letter}(({_letter}|{digit})*)
 %option yylineno
 %%
 {whiteSpace}+ {
     
+}
+
+\n {
+    yycolumn = 1;
 }
 
 ";" {
@@ -39,19 +51,23 @@ id {_letter}(({_letter}|{digit})*)
 
 
 "+" {
-    printf("PLUS\n");
+    // printf("PLUS\n");
+    return ADD;
 }
 
 "-" {
-    printf("MINUS\n");
+    // printf("MINUS\n");
+    return SUB;
 }
 
 "*" {
-    printf("STAR\n");
+    // printf("STAR\n");
+    return MUL;
 }
 
 "/" {
-    printf("DIV\n");
+    // printf("DIV\n");
+    return DIV;
 }
 
 "&&" {
@@ -118,80 +134,16 @@ id {_letter}(({_letter}|{digit})*)
     printf("WHILE\n");
 }
 
-{hexical} {
-    //read a hexical,but may have illgal char follow
-    //You can record the INT data from yytext first and then find if error follow
-    //atoi()
-    char c = input();//[0-9a-fA-F] if impossible
-    if((c > 'f' && c <= 'z')||(c > 'F' && c <= 'Z')||(c == '_')){
-        //cheated
-        c = input();
-        while(is_letterDigit(c)){
-            c = input();
-        }
-        unput(c);
-        printf("Error type A at line %d:invalid hexical,bad char(s) after \" %s \" \n",yylineno,yytext);
-    }
-    else{
-        printf("INT(hexical):%s\n",yytext);
-        unput(c);
-    }
-}
-
-{octal} {
-    //read a octal,but may have illgal char follow
-    char c = input();//[0-7] if impossible
-    if((c >= 'a' && c <= 'z')||(c >= 'A' && c <= 'Z')||(c == '_')||(c == '8')||(c == '9')){
-        //cheated
-        c = input();
-        while(is_letterDigit(c)){
-            c = input();
-        }
-        unput(c);
-        printf("Error type A at line %d:invalid octal,bad char(s) after \" %s \"\n",yylineno,yytext);
-    }
-    else{
-        printf("INT(octal):%s\n",yytext);
-        unput(c);
-    }
-}
-
-{decimal} {
-    //read a decimal,but may have illgal char follow
-    char c = input();//[0-9] is impossible
-    //要考虑0[8-9]的情况，这用八进制不能匹配，被匹配成十进制的0
-    if((((yyleng == 1 && yytext[0] == '0')
-    ||(yyleng == 2 && yytext[1] == '0' && (yytext[0] == '+' || yytext[0] == '-')))&& (c >= '8'&&c <= '9'))
-    ||((c >= 'a' && c <= 'z')||(c >= 'A' && c <= 'Z')||(c == '_'))){
-        //cheated
-        c = input();
-        while(is_letterDigit(c)){
-            c = input();
-        }
-        unput(c);
-        printf("Error type A at line %d:invalid decimal,bad char(s) after \" %s \"\n",yylineno,yytext);
-    }
-    else{
-        printf("INT(decimal):%s\n",yytext);
-        unput(c);
-    }
-}
 {float} {
-    //read a float,but may have illgal char follow
-    char c = input();//[0-9] is impossible
-    if((c >= 'a' && c <= 'z')||(c >= 'A' && c <= 'Z')||(c == '_')){
-        //cheated
-        c = input();
-        while(is_letterDigit(c)){
-            c = input();
-        }
-        unput(c);
-        printf("Error type A at line %d:bad char(s) after \" %s \"\n",yylineno,yytext);
-    }
-    else{
-        printf("FLOAT :%s\n",yytext);
-        unput(c);
-    }
+    // printf("FLOAT :%s\n",yytext);
+    yylval.type_float = atof(yytext);
+    return FLOAT;
+}
+
+{hexical}|{octal}|{decimal} {
+    // printf("INT:%s\n",yytext);
+    yylval.type_int = atoi(yytext);
+    return INT;
 }
 
 {id} {
@@ -199,25 +151,6 @@ id {_letter}(({_letter}|{digit})*)
 }
 
 . {
-    printf("Error type A at line %d:Mysterious char \'%s\'\n",yylineno,yytext);
+    printf("Error type A at line %d:Mysterious character \'%s\'\n",yylineno,yytext);
 }
 
-%%
-int main(int argc,char** argv){
-    if(argc > 1){
-        if(!(yyin = fopen(argv[1],"r"))){
-            perror(argv[1]);
-            return 1;
-        }
-        yylex();
-        // printf("%8d%8d%8d,ret = %d\n",lines,words,chars,ret);
-        return 0;
-    }
-}
-int is_letterDigit(char c){
-    if ((c == '_') || (c >= 'a'&& c <= 'z') || (c >= 'a'&& c <= 'z') || (c >= '0'&& c <= '9')){
-        return 1;
-    }
-    else
-        return 0;
-}
