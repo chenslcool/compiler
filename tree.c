@@ -167,7 +167,7 @@ void preTraverse(struct TreeNode *r, int spaceNum)
             break;
             case Node_STRUCT:
             {
-                printf("STAR");
+                printf("STRUCT");
             }
             break;
             case Node_RETURN:
@@ -211,107 +211,107 @@ void preTraverse(struct TreeNode *r, int spaceNum)
                 {
                 case Node_Program:
                 {
-                    printf("Program: (%d)", r->line);
+                    printf("Program (%d)", r->line);
                 }
                 break;
                 case Node_ExtDefList:
                 {
-                    printf("ExtDefList: (%d)", r->line);
+                    printf("ExtDefList (%d)", r->line);
                 }
                 break;
                 case Node_ExtDef:
                 {
-                    printf("ExtDef: (%d)", r->line);
+                    printf("ExtDef (%d)", r->line);
                 }
                 break;
                 case Node_ExtDecList:
                 {
-                    printf("ExtDecList: (%d)", r->line);
+                    printf("ExtDecList (%d)", r->line);
                 }
                 break;
                 case Node_Sepcifier:
                 {
-                    printf("Sepcifier: (%d)", r->line);
+                    printf("Sepcifier (%d)", r->line);
                 }
                 break;
                 case Node_StructSpecifier:
                 {
-                    printf("StructSpecifier: (%d)", r->line);
+                    printf("StructSpecifier (%d)", r->line);
                 }
                 break;
                 case Node_OptTag:
                 {
-                    printf("OptTag: (%d)", r->line);
+                    printf("OptTag (%d)", r->line);
                 }
                 break;
                 case Node_Tag:
                 {
-                    printf("Tag: (%d)", r->line);
+                    printf("Tag (%d)", r->line);
                 }
                 break;
                 case Node_VarDec:
                 {
-                    printf("VarDec: (%d)", r->line);
+                    printf("VarDec (%d)", r->line);
                 }
                 break;
                 case Node_FuncDec:
                 {
-                    printf("FuncDec: (%d)", r->line);
+                    printf("FuncDec (%d)", r->line);
                 }
                 break;
                 case Node_VarList:
                 {
-                    printf("VarList: (%d)", r->line);
+                    printf("VarList (%d)", r->line);
                 }
                 break;
                 case Node_ParamDec:
                 {
-                    printf("ParamDec: (%d)", r->line);
+                    printf("ParamDec (%d)", r->line);
                 }
                 break;
                 case Node_Compst:
                 {
-                    printf("Compst: (%d)", r->line);
+                    printf("Compst (%d)", r->line);
                 }
                 break;
                 case Node_StmtList:
                 {
-                    printf("StmtList: (%d)", r->line);
+                    printf("StmtList (%d)", r->line);
                 }
                 break;
                 case Node_Stmt:
                 {
-                    printf("Stmt: (%d)", r->line);
+                    printf("Stmt (%d)", r->line);
                 }
                 break;
                 case Node_DefList:
                 {
-                    printf("DefList: (%d)", r->line);
+                    printf("DefList (%d)", r->line);
                 }
                 break;
                 case Node_Def:
                 {
-                    printf("Def: (%d)", r->line);
+                    printf("Def (%d)", r->line);
                 }
                 break;
                 case Node_DecList:
                 {
-                    printf("DecList: (%d)", r->line);
+                    printf("DecList (%d)", r->line);
                 }
                 break;
                 case Node_Dec:
                 {
-                    printf("Dec: (%d)", r->line);
+                    printf("Dec (%d)", r->line);
                 }
                 break;
                 case Node_Exp:
                 {
-                    printf("Exp: (%d)", r->line);
+                    printf("Exp (%d)", r->line);
                 }
                 break;
                 case Node_Args:
                 {
-                    printf("Args: (%d)", r->line);
+                    printf("Args (%d)", r->line);
                 }
                 break;
                 }
