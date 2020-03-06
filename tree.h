@@ -29,6 +29,7 @@
 #define Node_ELSE 25
 #define Node_WHILE 26
 #define Node_MINUS 27
+
 #define Node_Program 28
 #define Node_ExtDefList 29
 #define Node_ExtDef 30
@@ -73,6 +74,8 @@ struct TreeNode
     int line;//第一次出现的行号，依赖于children[0]的line
 };
 
-void insert(struct TreeNode* parent,int n,...);//传入若干个TreeNode*，插入到parent中
+void insert(int type,struct TreeNode* parent,int n,...);//传入若干个TreeNode*，插入到parent中
+
+extern struct TreeNode* root;//全局变量，语法树的根
 
 #endif

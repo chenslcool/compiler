@@ -1,5 +1,6 @@
 %locations
 %{
+    #define YYDEBUG 1
     #include<stdio.h>
     #include "tree.h"
     #include "lex.yy.c"
@@ -47,84 +48,84 @@
 %type <node> Exp
 %type <node> Args
 %%
-Program : ExtDefList {insert(&($$),1,&($1));}
+Program : ExtDefList {insert(Node_Program,&($$),1,&($1)); root = &($$);}
     ;
-ExtDefList : ExtDef ExtDefList {insert(&($$),2,&($1),&($2));}
-    | {insert(&($$),0);}
+ExtDefList : ExtDef ExtDefList {insert(Node_ExtDefList,&($$),2,&($1),&($2));}
+    | {insert(Node_ExtDefList,&($$),0);}
     ;
-ExtDef : Sepcifier ExtDecList SEMI {insert(&($$),3,&($1),&($2),&($3));}
-    | Sepcifier SEMI {insert(&($$),2,&($1),&($2));}
-    | Sepcifier FuncDec Compst {insert(&($$),3,&($1),&($2),&($3));}
+ExtDef : Sepcifier ExtDecList SEMI {insert(Node_ExtDef,&($$),3,&($1),&($2),&($3));}
+    | Sepcifier SEMI {insert(Node_ExtDef,&($$),2,&($1),&($2));}
+    | Sepcifier FuncDec Compst {insert(Node_ExtDef,&($$),3,&($1),&($2),&($3));}
     ;
-ExtDecList : VarDec {insert(&($$),1,&($1));}
-    | VarDec COMMA ExtDecList {insert(&($$),3,&($1),&($2),&($3));}
+ExtDecList : VarDec {insert(Node_ExtDecList,&($$),1,&($1));}
+    | VarDec COMMA ExtDecList {insert(Node_ExtDecList,&($$),3,&($1),&($2),&($3));}
     ;
-Sepcifier : TYPE {insert(&($$),1,&($1));}
-    | StructSpecifier {insert(&($$),1,&($1));}
+Sepcifier : TYPE {insert(Node_Sepcifier,&($$),1,&($1));}
+    | StructSpecifier {insert(Node_Sepcifier,&($$),1,&($1));}
     ;
-StructSpecifier : STRUCT OptTag LC DefList RC {insert(&($$),5,&($1),&($2),&($3),&($4),&($5));}
-    | STRUCT Tag {insert(&($$),2,&($1),&($2));}
+StructSpecifier : STRUCT OptTag LC DefList RC {insert(Node_StructSpecifier,&($$),5,&($1),&($2),&($3),&($4),&($5));}
+    | STRUCT Tag {insert(Node_StructSpecifier,&($$),2,&($1),&($2));}
     ;
-OptTag : ID {insert(&($$),1,&($1));}
-    | {insert(&($$),0);}
+OptTag : ID {insert(Node_OptTag,&($$),1,&($1));}
+    | {insert(Node_OptTag,&($$),0);}
     ;
-Tag : ID {insert(&($$),1,&($1));}
+Tag : ID {insert(Node_Tag,&($$),1,&($1));}
     ;
-VarDec : ID {insert(&($$),1,&($1));}
-    | VarDec LB INT RB {insert(&($$),4,&($1),&($2),&($3),&($4));}
+VarDec : ID {insert(Node_VarDec,&($$),1,&($1));}
+    | VarDec LB INT RB {insert(Node_VarDec,&($$),4,&($1),&($2),&($3),&($4));}
     ;
-FuncDec : ID LP VarList RP {insert(&($$),4,&($1),&($2),&($3),&($4));}
-    | ID LP RP {insert(&($$),3,&($1),&($2),&($3));}
+FuncDec : ID LP VarList RP {insert(Node_FuncDec,&($$),4,&($1),&($2),&($3),&($4));}
+    | ID LP RP {insert(Node_FuncDec,&($$),3,&($1),&($2),&($3));}
     ;
-VarList : ParamDec COMMA VarList {insert(&($$),3,&($1),&($2),&($3));}
-    | ParamDec {insert(&($$),1,&($1));}
+VarList : ParamDec COMMA VarList {insert(Node_VarList,&($$),3,&($1),&($2),&($3));}
+    | ParamDec {insert(Node_VarList,&($$),1,&($1));}
     ;
-ParamDec : Sepcifier VarDec {insert(&($$),2,&($1),&($2));}
+ParamDec : Sepcifier VarDec {insert(Node_ParamDec,&($$),2,&($1),&($2));}
     ;
-Compst : LC DefList StmtList RC {insert(&($$),4,&($1),&($2),&($3),&($4));}
+Compst : LC DefList StmtList RC {insert(Node_Compst,&($$),4,&($1),&($2),&($3),&($4));}
     ;
-StmtList : Stmt StmtList {insert(&($$),2,&($1),&($2));}
-    | {insert(&($$),0);}
+StmtList : Stmt StmtList {insert(Node_StmtList,&($$),2,&($1),&($2));}
+    | {insert(Node_StmtList,&($$),0);}
     ;
-Stmt : Exp SEMI {insert(&($$),2,&($1),&($2));}
-    | Compst {insert(&($$),1,&($1));}
-    | RETURN Exp SEMI {insert(&($$),3,&($1),&($2),&($3));}
-    | IF LP Exp RP Stmt {insert(&($$),5,&($1),&($2),&($3),&($4),&($5));}
-    | IF LP Exp RP Stmt ELSE Stmt {insert(&($$),7,&($1),&($2),&($3),&($4),&($5),&($6),&($7));}
-    | WHILE LP Exp RP Stmt {insert(&($$),5,&($1),&($2),&($3),&($4),&($5));}
+Stmt : Exp SEMI {insert(Node_Stmt,&($$),2,&($1),&($2));}
+    | Compst {insert(Node_Stmt,&($$),1,&($1));}
+    | RETURN Exp SEMI {insert(Node_Stmt,&($$),3,&($1),&($2),&($3));}
+    | IF LP Exp RP Stmt {insert(Node_Stmt,&($$),5,&($1),&($2),&($3),&($4),&($5));}
+    | IF LP Exp RP Stmt ELSE Stmt {insert(Node_Stmt,&($$),7,&($1),&($2),&($3),&($4),&($5),&($6),&($7));}
+    | WHILE LP Exp RP Stmt {insert(Node_Stmt,&($$),5,&($1),&($2),&($3),&($4),&($5));}
     ;
-DefList : Def DefList {insert(&($$),2,&($1),&($2));}
-    | {insert(&($$),0);}
+DefList : Def DefList {insert(Node_DefList,&($$),2,&($1),&($2));}
+    | {insert(Node_DefList,&($$),0);}
     ;
-Def : Sepcifier DecList SEMI {insert(&($$),3,&($1),&($2),&($3));}
+Def : Sepcifier DecList SEMI {insert(Node_Def,&($$),3,&($1),&($2),&($3));}
     ;
-DecList : Dec {insert(&($$),1,&($1));}
-    | Dec COMMA DecList {insert(&($$),3,&($1),&($2),&($3));}
+DecList : Dec {insert(Node_DecList,&($$),1,&($1));}
+    | Dec COMMA DecList {insert(Node_DecList,&($$),3,&($1),&($2),&($3));}
     ;
-Dec : VarDec {insert(&($$),1,&($1));}
-    | VarDec ASSIGNOP Exp {insert(&($$),3,&($1),&($2),&($3));}
+Dec : VarDec {insert(Node_Dec,&($$),1,&($1));}
+    | VarDec ASSIGNOP Exp {insert(Node_Dec,&($$),3,&($1),&($2),&($3));}
     ;
-Exp : Exp ASSIGNOP Exp {insert(&($$),3,&($1),&($2),&($3));}
-    | Exp AND Exp {insert(&($$),3,&($1),&($2),&($3));}
-    | Exp OR Exp {insert(&($$),3,&($1),&($2),&($3));}
-    | Exp RELOP Exp {insert(&($$),3,&($1),&($2),&($3));}
-    | Exp PLUS Exp {insert(&($$),3,&($1),&($2),&($3));}
-    | Exp MINUS Exp {insert(&($$),3,&($1),&($2),&($3));}
-    | Exp STAR Exp {insert(&($$),3,&($1),&($2),&($3));}
-    | Exp DIV Exp {insert(&($$),3,&($1),&($2),&($3));}
-    | LP Exp RP {insert(&($$),3,&($1),&($2),&($3));}
-    | MINUS Exp {insert(&($$),2,&($1),&($2));}
-    | NOT Exp {insert(&($$),2,&($1),&($2));}
-    | ID LP Args RP {insert(&($$),4,&($1),&($2),&($3),&($4));}
-    | ID LP RP {insert(&($$),3,&($1),&($2),&($3));}
-    | Exp LB Exp RB {insert(&($$),4,&($1),&($2),&($3),&($4));}
-    | Exp DOT ID {insert(&($$),3,&($1),&($2),&($3));}
-    | ID {insert(&($$),1,&($1));}
-    | INT {insert(&($$),1,&($1));}
-    | FLOAT {insert(&($$),1,&($1));}
+Exp : Exp ASSIGNOP Exp {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | Exp AND Exp {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | Exp OR Exp {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | Exp RELOP Exp {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | Exp PLUS Exp {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | Exp MINUS Exp {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | Exp STAR Exp {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | Exp DIV Exp {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | LP Exp RP {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | MINUS Exp {insert(Node_Exp,&($$),2,&($1),&($2));}
+    | NOT Exp {insert(Node_Exp,&($$),2,&($1),&($2));}
+    | ID LP Args RP {insert(Node_Exp,&($$),4,&($1),&($2),&($3),&($4));}
+    | ID LP RP {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | Exp LB Exp RB {insert(Node_Exp,&($$),4,&($1),&($2),&($3),&($4));}
+    | Exp DOT ID {insert(Node_Exp,&($$),3,&($1),&($2),&($3));}
+    | ID {insert(Node_Exp,&($$),1,&($1));}
+    | INT {insert(Node_Exp,&($$),1,&($1));}
+    | FLOAT {insert(Node_Exp,&($$),1,&($1));}
     ;
-Args : Exp COMMA Args {insert(&($$),3,&($1),&($2),&($3));}
-    | Exp {insert(&($$),1,&($1));}
+Args : Exp COMMA Args {insert(Node_Args,&($$),3,&($1),&($2),&($3));}
+    | Exp {insert(Node_Args,&($$),1,&($1));}
     ;
 %%
 

@@ -1,4 +1,4 @@
 int f(){
     int asdna;
-    return 0;
+    return return 0;
 }
