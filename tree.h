@@ -1,7 +1,10 @@
 #ifndef TREE_H
 #define TREE_H
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 //树节点的type的定义
+//词法单元
 #define Node_INT 1
 #define Node_FLOAT 2
 #define Node_ID 3
@@ -30,6 +33,7 @@
 #define Node_WHILE 26
 #define Node_MINUS 27
 
+//语法单元
 #define Node_Program 28
 #define Node_ExtDefList 29
 #define Node_ExtDef 30
@@ -51,6 +55,8 @@
 #define Node_Dec 46
 #define Node_Exp 47
 #define Node_Args 48
+
+//用于区分type:int float
 #define TYPE_INT 49
 #define TYPE_FLOAT 50
 
@@ -74,7 +80,17 @@ struct TreeNode
     int line;//第一次出现的行号，依赖于children[0]的line
 };
 
-void insert(int type,struct TreeNode* parent,int n,...);//传入若干个TreeNode*，插入到parent中
+//判断r是否为词法单元
+int isLexicalUnit(struct TreeNode*r);
+
+//打印若干空格
+void printSpace(int num);
+
+//传入若干个TreeNode*，插入到parent中
+struct TreeNode* insert(int type,int n,...);
+
+//先序遍历
+void preTraverse(struct TreeNode*r,int spaceNum);
 
 extern struct TreeNode* root;//全局变量，语法树的根
 

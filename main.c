@@ -1,7 +1,7 @@
 #include<stdio.h>
 #include "tree.h"
 //已经在syntax.y中define YYDEBUG，要切换debug,只要在这里注释YYDEBUG就行
-#define YYDEBUG 1
+// #define YYDEBUG 1
 #include "syntax.tab.h"
 void yyrestart ( FILE *input_file  );
 int main(int argc,char** argv){
@@ -9,7 +9,7 @@ int main(int argc,char** argv){
         FILE* f = fopen(argv[1],"r");
         if(!f){
             perror(argv[1]);
-            return 1;
+            return 1; 
         }
         yyrestart(f);
         #if YYDEBUG
@@ -21,6 +21,7 @@ int main(int argc,char** argv){
         }
         else{
             //打印root树
+            preTraverse(root,0);
         }
         return 0;
     }
