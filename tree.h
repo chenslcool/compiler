@@ -92,6 +92,6 @@ struct TreeNode* insert(int type,int n,...);
 //先序遍历
 void preTraverse(struct TreeNode*r,int spaceNum);
 
-extern struct TreeNode* root;//全局变量，语法树的根
+extern struct TreeNode* root;//全局变量，语法树的根 
 
 #endif
