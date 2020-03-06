@@ -53,25 +53,25 @@ extern int yydebug;
     ASSIGNOP = 263,
     RELOP = 264,
     PLUS = 265,
-    MINUS = 266,
-    STAR = 267,
-    DIV = 268,
-    AND = 269,
-    OR = 270,
-    DOT = 271,
-    NOT = 272,
-    TYPE = 273,
-    LP = 274,
-    RP = 275,
-    LB = 276,
-    RB = 277,
-    LC = 278,
-    RC = 279,
-    STRUCT = 280,
-    RETURN = 281,
-    IF = 282,
-    ELSE = 283,
-    WHILE = 284
+    STAR = 266,
+    DIV = 267,
+    AND = 268,
+    OR = 269,
+    DOT = 270,
+    NOT = 271,
+    TYPE = 272,
+    LP = 273,
+    RP = 274,
+    LB = 275,
+    RB = 276,
+    LC = 277,
+    RC = 278,
+    STRUCT = 279,
+    RETURN = 280,
+    IF = 281,
+    ELSE = 282,
+    WHILE = 283,
+    MINUS = 284
   };
 #endif
 
@@ -80,13 +80,11 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 9 "./syntax.y" /* yacc.c:1909  */
+#line 10 "./syntax.y" /* yacc.c:1909  */
 
-    int type_int;
-    float type_float;
-    double type_double;
+    struct TreeNode node;//语法单元的属性值都是树节点
 
-#line 90 "./syntax.tab.h" /* yacc.c:1909  */
+#line 88 "./syntax.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;
