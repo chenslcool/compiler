@@ -27,6 +27,8 @@
 %left STAR DIV
 %right NOT NEGETIVE
 %left LP RP LB RB DOT
+%nonassoc LOWER_THEN_ELSE
+%nonassoc ELSE
 
 %type <node> Program
 %type <node> ExtDefList
@@ -98,7 +100,7 @@ StmtList : Stmt StmtList {$$ = insert(Node_StmtList,2,($1),($2));}
 Stmt : Exp SEMI {$$ = insert(Node_Stmt,2,($1),($2));}
     | Compst {$$ = insert(Node_Stmt,1,($1));}
     | RETURN Exp SEMI {$$ = insert(Node_Stmt,3,($1),($2),($3));}
-    | IF LP Exp RP Stmt {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
+    | IF LP Exp RP Stmt %prec LOWER_THEN_ELSE {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
     | IF LP Exp RP Stmt ELSE Stmt {$$ = insert(Node_Stmt,7,($1),($2),($3),($4),($5),($6),($7));}
     | WHILE LP Exp RP Stmt {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
     ;
