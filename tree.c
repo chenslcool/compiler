@@ -195,6 +195,11 @@ void preTraverse(struct TreeNode *r, int spaceNum)
                 printf("MINUS");
             }
             break;
+            case Node_NEGETIVE:
+            {
+                printf("MINUS");
+            }
+            break;
             }
             printf("\n");
         }

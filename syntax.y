@@ -17,15 +17,15 @@
 %token <node>FLOAT
 %token <node>ID /* char* ??*/
 %token <node>SEMI <node>COMMA <node>ASSIGNOP <node>RELOP <node>PLUS <node>STAR <node>DIV <node>AND <node>OR <node>DOT <node>NOT <node>TYPE <node>LP <node>RP <node>LB <node>RB <node>LC <node>RC <node>STRUCT <node>RETURN <node>IF <node>ELSE <node>WHILE
-%token <node>MINUS 
-
+%token <node>MINUS /* 减号 */
+%token <node>NEGETIVE /* 负号 */
 %right ASSIGNOP
 %left OR
 %left AND
 %left RELOP
 %left PLUS MINUS
 %left STAR DIV
-%right NOT
+%right NOT NEGETIVE
 %left LP RP LB RB DOT
 
 %type <node> Program
@@ -122,7 +122,7 @@ Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp STAR Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp DIV Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | LP Exp RP {$$ = insert(Node_Exp,3,($1),($2),($3));}
-    | MINUS Exp {$$ = insert(Node_Exp,2,($1),($2));}
+    | NEGETIVE Exp {$$ = insert(Node_Exp,2,($1),($2));}
     | NOT Exp {$$ = insert(Node_Exp,2,($1),($2));}
     | ID LP Args RP {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
     | ID LP RP {$$ = insert(Node_Exp,3,($1),($2),($3));}

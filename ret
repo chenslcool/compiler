@@ -60,22 +60,25 @@ Program (1)
                       ASSIGNOP
                       Exp (6)
                         Exp (6)
-                          MINUS
+                          LP
                           Exp (6)
-                            ID: dhex
-                        PLUS
-                        Exp (6)
-                          Exp (6)
-                            ID: oct
-                          STAR
-                          Exp (6)
-                            LP
                             Exp (6)
+                              NEGETIVE
                               Exp (6)
-                                ID: dec
-                              MINUS
-                              Exp (6)
-                                INT: 15
-                            RP
+                                ID: dhex
+                            PLUS
+                            Exp (6)
+                              ID: oct
+                          RP
+                        STAR
+                        Exp (6)
+                          LP
+                          Exp (6)
+                            Exp (6)
+                              ID: dec
+                            MINUS
+                            Exp (6)
+                              INT: 15
+                          RP
                   SEMI
         RC

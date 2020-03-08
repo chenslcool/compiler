@@ -31,34 +31,35 @@
 #define Node_IF 24
 #define Node_ELSE 25
 #define Node_WHILE 26
-#define Node_MINUS 27
+#define Node_NEGETIVE 27
+#define Node_MINUS 28
 
 //语法单元
-#define Node_Program 28
-#define Node_ExtDefList 29
-#define Node_ExtDef 30
-#define Node_ExtDecList 31
-#define Node_Sepcifier 32 
-#define Node_StructSpecifier 33
-#define Node_OptTag 34
-#define Node_Tag 35
-#define Node_VarDec 36
-#define Node_FuncDec 37
-#define Node_VarList 38
-#define Node_ParamDec 39
-#define Node_Compst 40
-#define Node_StmtList 41
-#define Node_Stmt 42
-#define Node_DefList 43
-#define Node_Def 44
-#define Node_DecList 45
-#define Node_Dec 46
-#define Node_Exp 47
-#define Node_Args 48
+#define Node_Program 29
+#define Node_ExtDefList 30
+#define Node_ExtDef 31
+#define Node_ExtDecList 32
+#define Node_Sepcifier 33
+#define Node_StructSpecifier 34
+#define Node_OptTag 35
+#define Node_Tag 36
+#define Node_VarDec 37
+#define Node_FuncDec 38
+#define Node_VarList 39
+#define Node_ParamDec 40
+#define Node_Compst 41
+#define Node_StmtList 42
+#define Node_Stmt 43
+#define Node_DefList 44
+#define Node_Def 45
+#define Node_DecList 46
+#define Node_Dec 47
+#define Node_Exp 48
+#define Node_Args 49
 
 //用于区分type:int float
-#define TYPE_INT 49
-#define TYPE_FLOAT 50
+#define TYPE_INT 50
+#define TYPE_FLOAT 51
 
 
 //对于一个语法单元，如果他是词法单元int id float，还有数值信息

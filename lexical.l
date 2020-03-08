@@ -4,6 +4,7 @@
     #include<stdlib.h>
     #include"syntax.tab.h"
     #include "tree.h"
+    int preIsExp = 0;//前面是否是表达式(表达式以 ),],ID,INT,FLOAT终结符结束)
     void preSetYylval(int type);
 %}
 digit [0-9]
@@ -25,130 +26,171 @@ id {_letter}(({_letter}|{digit})*)
 {whiteSpace}+ {
 }
 ";" {
+	preIsExp = 0;
     preSetYylval(Node_SEMI);
     return SEMI;
 }
 "," {
+	preIsExp = 0;
     preSetYylval(Node_COMMA);
     return COMMA;
 }
 {relop} {
+	preIsExp = 0;
     preSetYylval(Node_RELOP);
     return RELOP;
 }
 "=" {
+	preIsExp = 0;
     preSetYylval(Node_ASSIGNOP);
     return ASSIGNOP;
 }
 "+" {
+	preIsExp = 0;
     preSetYylval(Node_PLUS);
     return PLUS;
 }
 "-" {
-    preSetYylval(Node_MINUS);
-    return MINUS;
+    //根据前面是否为表达式区分负号和减号
+	if(preIsExp == 1)
+    {
+        preIsExp = 0;
+        preSetYylval(Node_MINUS);
+        // printf("减号:line = %d",yylineno);
+        return MINUS;
+    }
+    else{
+        preIsExp = 0;
+        preSetYylval(Node_NEGETIVE);
+        // printf("负号:line = %d",yylineno);
+        return NEGETIVE;
+    }
 }
 "*" {
+	preIsExp = 0;
     preSetYylval(Node_STAR);
     return STAR;
 }
 "/" {
+	preIsExp = 0;
     preSetYylval(Node_DIV);
     return DIV;
 }
 "&&" {
+	preIsExp = 0;
     preSetYylval(Node_AND);
     return AND;
 }
 "||" {
+	preIsExp = 0;
     preSetYylval(Node_OR);
     return OR;
 }
 "!" {
+	preIsExp = 0;
     preSetYylval(Node_NOT);
     return NOT;
 }
 "." {
+	preIsExp = 0;
     preSetYylval(Node_DOT);
     return DOT;
 }
 (int) {
+	preIsExp = 0;
     preSetYylval(Node_TYPE);
     yylval.node->val.typeVal = TYPE_INT;
     return TYPE;
 }
 (float) {
+	preIsExp = 0;
     preSetYylval(Node_TYPE);
     yylval.node->val.typeVal = TYPE_FLOAT;
     return TYPE;
 }
 "(" {
+	preIsExp = 0;
     preSetYylval(Node_LP);
     return LP;
 }
 ")" {
+	preIsExp = 1;
     preSetYylval(Node_RP);
     return RP;
 }
 "[" {
+	preIsExp = 0;
     preSetYylval(Node_LB);
     return LB;
 }
 "]" {
+	preIsExp = 1;
     preSetYylval(Node_RB);
     return RB;
 }
 "{" {
+	preIsExp = 0;
     preSetYylval(Node_LC);
     return LC;
 }
 "}" {
+	preIsExp = 0;
     preSetYylval(Node_RC);
     return RC;
 }
 "struct" {
+	preIsExp = 0;
     preSetYylval(Node_STRUCT);
     return STRUCT;
 }
 "return" {
+	preIsExp = 0;
     preSetYylval(Node_RETURN);
     return RETURN;
 }
 "if" {
+	preIsExp = 0;
     preSetYylval(Node_IF);
     return IF;
 }
 "else" {
+	preIsExp = 0;
     preSetYylval(Node_ELSE);
     return ELSE;
 }
 "while" {
+	preIsExp = 0;
     preSetYylval(Node_WHILE);
     return WHILE;
 }
 {float} {
+	preIsExp = 1;
     preSetYylval(Node_FLOAT);
     yylval.node->val.floatVal = atof(yytext);
     return FLOAT;
 }
 {decimal} {
+	preIsExp = 1;
     preSetYylval(Node_INT);
     yylval.node->val.intVal = atoi(yytext);
     return INT;
 }
 {octal} {
+	preIsExp = 1;
     preSetYylval(Node_INT);
     char* ptr;
     yylval.node->val.intVal = (int)strtol(yytext,&ptr,8);
     return INT;
 }
 {hexical} {
+	preIsExp = 1;
     preSetYylval(Node_INT);
     char* ptr;
     yylval.node->val.intVal = (int)strtol(yytext,&ptr,16);
     return INT;
 }
 {id} {
+	preIsExp = 1;
     preSetYylval(Node_ID);
     yylval.node->val.idName = (char*)malloc(sizeof(char)*(yyleng+1));
     memcpy(yylval.node->val.idName,yytext,sizeof(char)*(yyleng+1));
