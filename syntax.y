@@ -60,6 +60,12 @@ ExtDefList : ExtDef ExtDefList {$$ = insert(Node_ExtDefList,2,($1),($2));}
 ExtDef : Sepcifier ExtDecList SEMI {$$ = insert(Node_ExtDef,3,($1),($2),($3));}
     | Sepcifier SEMI {$$ = insert(Node_ExtDef,2,($1),($2));}
     | Sepcifier FuncDec Compst {$$ = insert(Node_ExtDef,3,($1),($2),($3));}
+    | Sepcifier error RC{
+        //我乱来了,struct{}a,错误直接找下一个RC
+        $$ = insert(Node_ExtDef,0);
+        SyntaxError = 1;
+        PrintSyntaxError("ExtDef Error",$3->line);   
+    }
     ;
 ExtDecList : VarDec {$$ = insert(Node_ExtDecList,1,($1));}
     | VarDec COMMA ExtDecList {$$ = insert(Node_ExtDecList,3,($1),($2),($3));}
@@ -71,9 +77,9 @@ StructSpecifier : STRUCT OptTag LC DefList RC {$$ = insert(Node_StructSpecifier,
     | STRUCT Tag {$$ = insert(Node_StructSpecifier,2,($1),($2));}
     | STRUCT error RC SEMI {
         //结构体定义错误
-        $$ = insert(Node_ExtDef,0);
+        $$ = insert(Node_StructSpecifier,0);
         SyntaxError = 1;
-        PrintSyntaxError("struct define error",$4->line);
+        PrintSyntaxError("struct define error",$1->line);
     }
     ;
 OptTag : ID {$$ = insert(Node_OptTag,1,($1));}
@@ -83,6 +89,12 @@ Tag : ID {$$ = insert(Node_Tag,1,($1));}
     ;
 VarDec : ID {$$ = insert(Node_VarDec,1,($1));}
     | VarDec LB INT RB {$$ = insert(Node_VarDec,4,($1),($2),($3),($4));}
+    | VarDec LB error RB{
+        //数组定义错误int a[3,4]
+        $$ = insert(Node_VarDec,0);
+        SyntaxError = 1;
+        PrintSyntaxError("array define error",$1->line);
+    }
     ;
 FuncDec : ID LP VarList RP {$$ = insert(Node_FuncDec,4,($1),($2),($3),($4));}
     | ID LP RP {$$ = insert(Node_FuncDec,3,($1),($2),($3));}
@@ -100,8 +112,20 @@ StmtList : Stmt StmtList {$$ = insert(Node_StmtList,2,($1),($2));}
 Stmt : Exp SEMI {$$ = insert(Node_Stmt,2,($1),($2));}
     | Compst {$$ = insert(Node_Stmt,1,($1));}
     | RETURN Exp SEMI {$$ = insert(Node_Stmt,3,($1),($2),($3));}
+    | RETURN error RC { 
+        //return 缺失';''
+        $$ = insert(Node_Stmt,0);
+        SyntaxError = 1;
+        PrintSyntaxError("missing ';' in return statement",$1->line);
+        }
     | IF LP Exp RP Stmt %prec LOWER_THEN_ELSE {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
     | IF LP Exp RP Stmt ELSE Stmt {$$ = insert(Node_Stmt,7,($1),($2),($3),($4),($5),($6),($7));}
+    | IF LP Exp RP error SEMI{
+        //if 出错
+        $$ = insert(Node_Stmt,0);
+        SyntaxError = 1;
+        PrintSyntaxError("if statement error",$1->line);
+    }
     | WHILE LP Exp RP Stmt {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
     ;
 DefList : Def DefList {$$ = insert(Node_DefList,2,($1),($2));}
@@ -116,6 +140,11 @@ Dec : VarDec {$$ = insert(Node_Dec,1,($1));}
     | VarDec ASSIGNOP Exp {$$ = insert(Node_Dec,3,($1),($2),($3));}
     ;
 Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
+    | Exp ASSIGNOP error SEMI{
+        $$ = insert(Node_Exp,0);
+        SyntaxError = 1;
+        PrintSyntaxError("Expression error",$4->line);
+    }
     | Exp AND Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp OR Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp RELOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
@@ -129,10 +158,28 @@ Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | ID LP Args RP {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
     | ID LP RP {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp LB Exp RB {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
+    | Exp LB error SEMI{
+        //数组访问错误a[3,4],a[]
+        $$ = insert(Node_Exp,0);
+        SyntaxError = 1;
+        PrintSyntaxError("array access error",$1->line);
+    }
     | Exp DOT ID {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | ID {$$ = insert(Node_Exp,1,($1));}
     | INT {$$ = insert(Node_Exp,1,($1));}
     | FLOAT {$$ = insert(Node_Exp,1,($1));}
+    | INT error ID{
+        //return 表达式错误 23GG这样的
+        $$ = insert(Node_Exp,0);
+        SyntaxError = 1;
+        PrintSyntaxError("Expression error",$1->line);
+    }
+    | FLOAT error ID{
+        //return 表达式错误 0.12e这样的
+        $$ = insert(Node_Exp,0);
+        SyntaxError = 1;
+        PrintSyntaxError("Expression error",$1->line);
+    }
     ;
 Args : Exp COMMA Args {$$ = insert(Node_Args,3,($1),($2),($3));}
     | Exp {$$ = insert(Node_Args,1,($1));}
