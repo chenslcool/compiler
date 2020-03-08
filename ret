@@ -4,42 +4,78 @@ Program (1)
       Sepcifier (1)
         TYPE: int
       FuncDec (1)
-        ID: main
+        ID: func_test
         LP
         RP
-      Compst (1)
+      Compst (2)
         LC
-        DefList (2)
-          Def (2)
-            Sepcifier (2)
+        DefList (3)
+          Def (3)
+            Sepcifier (3)
               TYPE: int
-            DecList (2)
-              Dec (2)
-                VarDec (2)
-                  ID: a
+            DecList (3)
+              Dec (3)
+                VarDec (3)
+                  ID: _dec_
                 ASSIGNOP
-                Exp (2)
-                  INT: 2
+                Exp (3)
+                  INT: 209
             SEMI
-        StmtList (3)
-          Stmt (3)
-            IF
-            LP
-            Exp (3)
-              Exp (3)
-                ID: a
-              RELOP
-              Exp (3)
-                INT: 2
-            RP
-            Stmt (4)
-              Exp (4)
-                INT: 3
+          DefList (4)
+            Def (4)
+              Sepcifier (4)
+                TYPE: int
+              DecList (4)
+                Dec (4)
+                  VarDec (4)
+                    ID: _oct_
+                  ASSIGNOP
+                  Exp (4)
+                    INT: 77
               SEMI
-          StmtList (5)
-            Stmt (5)
-              RETURN
-              Exp (5)
-                INT: 0
-              SEMI
+            DefList (5)
+              Def (5)
+                Sepcifier (5)
+                  TYPE: int
+                DecList (5)
+                  Dec (5)
+                    VarDec (5)
+                      ID: _dhex_
+                    ASSIGNOP
+                    Exp (5)
+                      Exp (5)
+                        INT: 28587
+                      MINUS
+                      Exp (5)
+                        ID: _dec_number
+                SEMI
+              DefList (6)
+                Def (6)
+                  Sepcifier (6)
+                    TYPE: int
+                  DecList (6)
+                    Dec (6)
+                      VarDec (6)
+                        ID: _result_
+                      ASSIGNOP
+                      Exp (6)
+                        Exp (6)
+                          MINUS
+                          Exp (6)
+                            ID: dhex
+                        PLUS
+                        Exp (6)
+                          Exp (6)
+                            ID: oct
+                          STAR
+                          Exp (6)
+                            LP
+                            Exp (6)
+                              Exp (6)
+                                ID: dec
+                              MINUS
+                              Exp (6)
+                                INT: 15
+                            RP
+                  SEMI
         RC
