@@ -4,7 +4,9 @@
     #include<stdio.h>
     #include "tree.h"
     #include "lex.yy.c"
+    extern int SyntaxError;
     void yyerror(char* msg);
+    void PrintSyntaxError(char* msg,int line);
 %}
 
 /* declared tokens*/
@@ -65,6 +67,12 @@ Sepcifier : TYPE {$$ = insert(Node_Sepcifier,1,($1));}
     ;
 StructSpecifier : STRUCT OptTag LC DefList RC {$$ = insert(Node_StructSpecifier,5,($1),($2),($3),($4),($5));}
     | STRUCT Tag {$$ = insert(Node_StructSpecifier,2,($1),($2));}
+    | STRUCT error RC SEMI {
+        //结构体定义错误
+        $$ = insert(Node_ExtDef,0);
+        SyntaxError = 1;
+        PrintSyntaxError("struct define error",$4->line);
+    }
     ;
 OptTag : ID {$$ = insert(Node_OptTag,1,($1));}
     | {$$ = insert(Node_OptTag,0);}
@@ -131,4 +139,8 @@ Args : Exp COMMA Args {$$ = insert(Node_Args,3,($1),($2),($3));}
 
 void yyerror(char* msg){
     fprintf(stderr,"error: %s\n",msg);
+}
+
+void PrintSyntaxError(char* msg,int line){
+    printf("Error type B at Line %d: %s.\n",line,msg);
 }

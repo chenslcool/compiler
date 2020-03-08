@@ -172,27 +172,27 @@ void preTraverse(struct TreeNode *r, int spaceNum)
             break;
             case Node_RETURN:
             {
-                printf("DIV");
+                printf("RETURN");
             }
             break;
             case Node_IF:
             {
-                printf("AND");
+                printf("IF");
             }
             break;
             case Node_ELSE:
             {
-                printf("OR");
+                printf("ELSE");
             }
             break;
             case Node_WHILE:
             {
-                printf("DOT");
+                printf("WHILE");
             }
             break;
             case Node_MINUS:
             {
-                printf("NOT");
+                printf("MINUS");
             }
             break;
             }

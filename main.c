@@ -3,6 +3,7 @@
 //已经在syntax.y中define YYDEBUG，要切换debug,只要在这里注释YYDEBUG就行
 // #define YYDEBUG 1
 #include "syntax.tab.h"
+int SyntaxError = 0;//bison检查到语义错误，在含error的产生式的语义动作中会设置它，给main()查看
 void yyrestart ( FILE *input_file  );
 int main(int argc,char** argv){
     if(argc > 1){
@@ -15,12 +16,8 @@ int main(int argc,char** argv){
         #if YYDEBUG
             yydebug = 1;
         #endif
-        int err =  yyparse();
-        if(err){
-            printf("error occur\n");
-        }
-        else{
-            //打印root树
+        yyparse();
+        if(SyntaxError == 0){
             preTraverse(root,0);
         }
         return 0;
