@@ -6,6 +6,7 @@
     #include "tree.h"
     int preIsExp = 0;//前面是否是表达式(表达式以 ),],ID,INT,FLOAT终结符结束)
     void preSetYylval(int type);
+    extern int SyntaxError;
 %}
 digit [0-9]
 digits {digit}+
@@ -197,7 +198,8 @@ id {_letter}(({_letter}|{digit})*)
     return ID;
 }
 . {
-    printf("Error type A at line %d:Mysterious character \'%c\'\n",yylineno,*yytext);
+    SyntaxError = 1;
+    printf("Error type A at line %d:Mysterious character \'%c\'.\n",yylineno,*yytext);
 }
 %%
 void preSetYylval(int type)

@@ -60,12 +60,12 @@ ExtDefList : ExtDef ExtDefList {$$ = insert(Node_ExtDefList,2,($1),($2));}
 ExtDef : Sepcifier ExtDecList SEMI {$$ = insert(Node_ExtDef,3,($1),($2),($3));}
     | Sepcifier SEMI {$$ = insert(Node_ExtDef,2,($1),($2));}
     | Sepcifier FuncDec Compst {$$ = insert(Node_ExtDef,3,($1),($2),($3));}
-    | Sepcifier error RC{
+    /*| Sepcifier error RC{
         //我乱来了,struct{}a,错误直接找下一个RC
         $$ = insert(Node_ExtDef,0);
         SyntaxError = 1;
         PrintSyntaxError("ExtDef Error",$3->line);   
-    }
+    }*/
     ;
 ExtDecList : VarDec {$$ = insert(Node_ExtDecList,1,($1));}
     | VarDec COMMA ExtDecList {$$ = insert(Node_ExtDecList,3,($1),($2),($3));}
@@ -124,7 +124,7 @@ Stmt : Exp SEMI {$$ = insert(Node_Stmt,2,($1),($2));}
         //if 出错
         $$ = insert(Node_Stmt,0);
         SyntaxError = 1;
-        PrintSyntaxError("if statement error",$1->line);
+        PrintSyntaxError("Missing ';'",$1->line);
     }
     | WHILE LP Exp RP Stmt {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
     ;
@@ -158,7 +158,7 @@ Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | ID LP Args RP {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
     | ID LP RP {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp LB Exp RB {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
-    | Exp LB error SEMI{
+    | Exp LB error RB{
         //数组访问错误a[3,4],a[]
         $$ = insert(Node_Exp,0);
         SyntaxError = 1;
@@ -172,13 +172,13 @@ Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
         //return 表达式错误 23GG这样的
         $$ = insert(Node_Exp,0);
         SyntaxError = 1;
-        PrintSyntaxError("Expression error",$1->line);
+        PrintSyntaxError("Bad Integer",$1->line);
     }
     | FLOAT error ID{
         //return 表达式错误 0.12e这样的
         $$ = insert(Node_Exp,0);
         SyntaxError = 1;
-        PrintSyntaxError("Expression error",$1->line);
+        PrintSyntaxError("Bad Float",$1->line);
     }
     ;
 Args : Exp COMMA Args {$$ = insert(Node_Args,3,($1),($2),($3));}
@@ -187,6 +187,7 @@ Args : Exp COMMA Args {$$ = insert(Node_Args,3,($1),($2),($3));}
 %%
 
 void yyerror(char* msg){
+    SyntaxError = 1;
     fprintf(stderr,"error: %s\n",msg);
 }
 
