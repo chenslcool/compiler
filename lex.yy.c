@@ -341,6 +341,7 @@ void yyfree ( void *  );
 	}
 #define YY_AT_BOL() (YY_CURRENT_BUFFER_LVALUE->yy_at_bol)
 
+/* Begin user sect3 */
 typedef flex_uint8_t YY_CHAR;
 
 FILE *yyin = NULL, *yyout = NULL;
@@ -525,14 +526,11 @@ char *yytext;
     #include<stdlib.h>
     #include"syntax.tab.h"
     #include "tree.h"
-    int yycolumn = 1;
-    #define YY_USER_ACTION \
-        yylloc.first_line = yylloc.last_line = yylineno; \
-        yylloc.first_column = yycolumn; \
-        yylloc.last_column = yycolumn + yyleng - 1; \
-        yycolumn += yyleng;
-#line 535 "./lex.yy.c"
-#line 536 "./lex.yy.c"
+    int preIsExp = 0;//前面是否是表达式(表达式以 ),],ID,INT,FLOAT终结符结束)
+    void preSetYylval(int type);
+    extern int SyntaxError;
+#line 533 "./lex.yy.c"
+#line 534 "./lex.yy.c"
 
 #define INITIAL 0
 
@@ -749,9 +747,9 @@ YY_DECL
 		}
 
 	{
-#line 30 "./lexical.l"
+#line 26 "./lexical.l"
 
-#line 755 "./lex.yy.c"
+#line 753 "./lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -821,375 +819,315 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 31 "./lexical.l"
+#line 27 "./lexical.l"
 {
-    // printf("%d\n",yytext[0]);
-    if(yytext[0] == '\n'){
-        yycolumn = 1;
-        //printf("got \\n\n");
-    }
 }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 39 "./lexical.l"
+#line 29 "./lexical.l"
 {
-    //printf("SEMI\n");
-    yylval.node.type = Node_SEMI;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_SEMI);
     return SEMI;
 }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 47 "./lexical.l"
+#line 34 "./lexical.l"
 {
-    //printf("COMMA\n");
-    yylval.node.type = Node_COMMA;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_COMMA);
     return COMMA;
 }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 55 "./lexical.l"
+#line 39 "./lexical.l"
 {
-    //printf("RELOP:%s\n",yytext);
-    yylval.node.type = Node_RELOP;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_RELOP);
     return RELOP;
 }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 63 "./lexical.l"
+#line 44 "./lexical.l"
 {
-    //printf("ASSIGNOP\n");
-    yylval.node.type = Node_ASSIGNOP;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_ASSIGNOP);
     return ASSIGNOP;
 }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 72 "./lexical.l"
+#line 49 "./lexical.l"
 {
-    //printf("PLUS\n");
-    yylval.node.type = Node_PLUS;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_PLUS);
     return PLUS;
 }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 80 "./lexical.l"
+#line 54 "./lexical.l"
 {
-    //printf("MINUS\n");
-    yylval.node.type = Node_MINUS;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
-    return MINUS;
+    //根据前面是否为表达式区分负号和减号
+	if(preIsExp == 1)
+    {
+        preIsExp = 0;
+        preSetYylval(Node_MINUS);
+        // printf("减号:line = %d",yylineno);
+        return MINUS;
+    }
+    else{
+        preIsExp = 0;
+        preSetYylval(Node_NEGETIVE);
+        // printf("负号:line = %d",yylineno);
+        return NEGETIVE;
+    }
 }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 88 "./lexical.l"
+#line 70 "./lexical.l"
 {
-    //printf("STAR\n");
-    yylval.node.type = Node_STAR;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_STAR);
     return STAR;
 }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 96 "./lexical.l"
+#line 75 "./lexical.l"
 {
-    //printf("DIV\n");
-    yylval.node.type = Node_DIV;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_DIV);
     return DIV;
 }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 104 "./lexical.l"
+#line 80 "./lexical.l"
 {
-    //printf("AND\n");
-    yylval.node.type = Node_AND;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_AND);
     return AND;
 }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 112 "./lexical.l"
+#line 85 "./lexical.l"
 {
-    //printf("OR\n");
-    yylval.node.type = Node_OR;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_OR);
     return OR;
 }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 120 "./lexical.l"
+#line 90 "./lexical.l"
 {
-    //printf("NOT\n");
-    yylval.node.type = Node_NOT;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_NOT);
     return NOT;
 }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 128 "./lexical.l"
+#line 95 "./lexical.l"
 {
-    //printf("DOT\n");
-    yylval.node.type = Node_DOT;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_DOT);
     return DOT;
 }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 136 "./lexical.l"
+#line 100 "./lexical.l"
 {
-    //printf("TYPE:%s\n",yytext);
-    yylval.node.type = Node_TYPE;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
-    yylval.node.val.typeVal = TYPE_INT;
+	preIsExp = 0;
+    preSetYylval(Node_TYPE);
+    yylval.node->val.typeVal = TYPE_INT;
     return TYPE;
 }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 145 "./lexical.l"
+#line 106 "./lexical.l"
 {
-    //printf("TYPE:%s\n",yytext);
-    yylval.node.type = Node_TYPE;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
-    yylval.node.val.typeVal = TYPE_FLOAT;
+	preIsExp = 0;
+    preSetYylval(Node_TYPE);
+    yylval.node->val.typeVal = TYPE_FLOAT;
     return TYPE;
 }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 154 "./lexical.l"
+#line 112 "./lexical.l"
 {
-    //printf("LP\n");
-    yylval.node.type = Node_LP;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_LP);
     return LP;
 }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 162 "./lexical.l"
+#line 117 "./lexical.l"
 {
-    //printf("RP\n");
-    yylval.node.type = Node_RP;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 1;
+    preSetYylval(Node_RP);
     return RP;
 }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 170 "./lexical.l"
+#line 122 "./lexical.l"
 {
-    //printf("LB\n");
-    yylval.node.type = Node_LB;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_LB);
     return LB;
 }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 178 "./lexical.l"
+#line 127 "./lexical.l"
 {
-    //printf("RB\n");
-    yylval.node.type = Node_RB;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 1;
+    preSetYylval(Node_RB);
     return RB;
 }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 186 "./lexical.l"
+#line 132 "./lexical.l"
 {
-    //printf("LC\n");
-    yylval.node.type = Node_LC;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_LC);
     return LC;
 }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 194 "./lexical.l"
+#line 137 "./lexical.l"
 {
-    //printf("RC\n");
-    yylval.node.type = Node_RC;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_RC);
     return RC;
 }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 202 "./lexical.l"
+#line 142 "./lexical.l"
 {
-    //printf("STRUCT\n");
-    yylval.node.type = Node_STRUCT;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_STRUCT);
     return STRUCT;
 }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 210 "./lexical.l"
+#line 147 "./lexical.l"
 {
-    //printf("RETURN\n");
-    yylval.node.type = Node_RETURN;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_RETURN);
     return RETURN;
 }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 218 "./lexical.l"
+#line 152 "./lexical.l"
 {
-    //printf("IF\n");
-    yylval.node.type = Node_IF;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_IF);
     return IF;
 }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 226 "./lexical.l"
+#line 157 "./lexical.l"
 {
-    //printf("ELSE\n");
-    yylval.node.type = Node_ELSE;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_ELSE);
     return ELSE;
 }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 234 "./lexical.l"
+#line 162 "./lexical.l"
 {
-    //printf("WHILE\n");
-    yylval.node.type = Node_WHILE;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 0;
+    preSetYylval(Node_WHILE);
     return WHILE;
 }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 242 "./lexical.l"
+#line 167 "./lexical.l"
 {
-    //printf("FLOAT :%s\n",yytext);
-    // yylval.type_float = atof(yytext);
-    yylval.node.type = Node_FLOAT;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
-    yylval.node.val.floatVal = atof(yytext);
+	preIsExp = 1;
+    preSetYylval(Node_FLOAT);
+    yylval.node->val.floatVal = atof(yytext);
     return FLOAT;
 }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 252 "./lexical.l"
+#line 173 "./lexical.l"
 {
-    yylval.node.type = Node_INT;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
-    yylval.node.val.intVal = atoi(yytext);
-    // printf("INT:%s\n",yytext);
-    // printf("十进制:%d\n",yylval.node.val.intVal);
+	preIsExp = 1;
+    preSetYylval(Node_INT);
+    yylval.node->val.intVal = atoi(yytext);
     return INT;
 }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 262 "./lexical.l"
+#line 179 "./lexical.l"
 {
-    yylval.node.type = Node_INT;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 1;
+    preSetYylval(Node_INT);
     char* ptr;
-    yylval.node.val.intVal = (int)strtol(yytext,&ptr,8);
-    // printf("INT:%s\n",yytext);
-    // printf("八进制:%d\n",yylval.node.val.intVal);
+    yylval.node->val.intVal = (int)strtol(yytext,&ptr,8);
     return INT;
 }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 273 "./lexical.l"
+#line 186 "./lexical.l"
 {
-    yylval.node.type = Node_INT;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
+	preIsExp = 1;
+    preSetYylval(Node_INT);
     char* ptr;
-    yylval.node.val.intVal = (int)strtol(yytext,&ptr,16);
-    // printf("INT:%s\n",yytext);
-    // printf("十六进制:%d\n",yylval.node.val.intVal);
+    yylval.node->val.intVal = (int)strtol(yytext,&ptr,16);
     return INT;
 }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 284 "./lexical.l"
+#line 193 "./lexical.l"
 {
-    //printf("ID:%s\n",yytext);
-    // TODO: add more information about id?
-    yylval.node.type = Node_ID;
-    yylval.node.numChildren = 0;
-    yylval.node.line = yylineno;
-    //复制标识符名称，要分配空间
-    yylval.node.val.idName = (char*)malloc(sizeof(char)*(yyleng+1));
-    memcpy(yylval.node.val.idName,yytext,sizeof(char)*(yyleng+1));
-    // printf("id:%s\n",yylval.node.val.idName);
+	preIsExp = 1;
+    preSetYylval(Node_ID);
+    yylval.node->val.idName = (char*)malloc(sizeof(char)*(yyleng+1));
+    memcpy(yylval.node->val.idName,yytext,sizeof(char)*(yyleng+1));
     return ID;
 }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 297 "./lexical.l"
+#line 200 "./lexical.l"
 {
-    printf("Error type A at line %d:Mysterious character \'%c\'\n",yylineno,*yytext);
+    SyntaxError = 1;
+    printf("Error type A at line %d:Mysterious character \'%c\'.\n",yylineno,*yytext);
 }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 301 "./lexical.l"
+#line 204 "./lexical.l"
 ECHO;
 	YY_BREAK
-#line 1193 "./lex.yy.c"
+#line 1131 "./lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2206,4 +2144,12 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 301 "./lexical.l"
+#line 204 "./lexical.l"
+
+void preSetYylval(int type)
+{
+    yylval.node = (struct TreeNode*)malloc(sizeof(struct TreeNode));
+	yylval.node->type = type;
+    yylval.node->numChildren = 0;
+    yylval.node->line = yylineno;
+}

@@ -71,7 +71,9 @@ extern int yydebug;
     IF = 281,
     ELSE = 282,
     WHILE = 283,
-    MINUS = 284
+    MINUS = 284,
+    NEGETIVE = 285,
+    LOWER_THEN_ELSE = 286
   };
 #endif
 
@@ -80,11 +82,11 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 10 "./syntax.y" /* yacc.c:1909  */
+#line 13 "./syntax.y" /* yacc.c:1909  */
 
-    struct TreeNode node;//语法单元的属性值都是树节点
+    struct TreeNode* node;//语法单元的属性值都是树节点
 
-#line 88 "./syntax.tab.h" /* yacc.c:1909  */
+#line 90 "./syntax.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

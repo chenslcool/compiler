@@ -60,12 +60,11 @@ ExtDefList : ExtDef ExtDefList {$$ = insert(Node_ExtDefList,2,($1),($2));}
 ExtDef : Sepcifier ExtDecList SEMI {$$ = insert(Node_ExtDef,3,($1),($2),($3));}
     | Sepcifier SEMI {$$ = insert(Node_ExtDef,2,($1),($2));}
     | Sepcifier FuncDec Compst {$$ = insert(Node_ExtDef,3,($1),($2),($3));}
-    /*| Sepcifier error RC{
-        //我乱来了,struct{}a,错误直接找下一个RC
+    | Sepcifier error SEMI{
+        //int a = 4;不能赋值
         $$ = insert(Node_ExtDef,0);
-        SyntaxError = 1;
-        PrintSyntaxError("ExtDef Error",$3->line);   
-    }*/
+        PrintSyntaxError("ExtDef error",$1->line);
+    }
     ;
 ExtDecList : VarDec {$$ = insert(Node_ExtDecList,1,($1));}
     | VarDec COMMA ExtDecList {$$ = insert(Node_ExtDecList,3,($1),($2),($3));}
@@ -78,7 +77,6 @@ StructSpecifier : STRUCT OptTag LC DefList RC {$$ = insert(Node_StructSpecifier,
     | STRUCT error RC SEMI {
         //结构体定义错误
         $$ = insert(Node_StructSpecifier,0);
-        SyntaxError = 1;
         PrintSyntaxError("struct define error",$1->line);
     }
     ;
@@ -92,12 +90,15 @@ VarDec : ID {$$ = insert(Node_VarDec,1,($1));}
     | VarDec LB error RB{
         //数组定义错误int a[3,4]
         $$ = insert(Node_VarDec,0);
-        SyntaxError = 1;
         PrintSyntaxError("array define error",$1->line);
     }
     ;
 FuncDec : ID LP VarList RP {$$ = insert(Node_FuncDec,4,($1),($2),($3),($4));}
     | ID LP RP {$$ = insert(Node_FuncDec,3,($1),($2),($3));}
+    | ID LP error RP{
+        $$ = insert(Node_FuncDec,0);
+        PrintSyntaxError("Function header define error",$1->line);
+    }
     ;
 VarList : ParamDec COMMA VarList {$$ = insert(Node_VarList,3,($1),($2),($3));}
     | ParamDec {$$ = insert(Node_VarList,1,($1));}
@@ -115,7 +116,6 @@ Stmt : Exp SEMI {$$ = insert(Node_Stmt,2,($1),($2));}
     | RETURN error RC { 
         //return 缺失';''
         $$ = insert(Node_Stmt,0);
-        SyntaxError = 1;
         PrintSyntaxError("missing ';' in return statement",$1->line);
         }
     | IF LP Exp RP Stmt %prec LOWER_THEN_ELSE {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
@@ -123,7 +123,6 @@ Stmt : Exp SEMI {$$ = insert(Node_Stmt,2,($1),($2));}
     | IF LP Exp RP error SEMI{
         //if 出错
         $$ = insert(Node_Stmt,0);
-        SyntaxError = 1;
         PrintSyntaxError("Missing ';'",$1->line);
     }
     | WHILE LP Exp RP Stmt {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
@@ -142,7 +141,6 @@ Dec : VarDec {$$ = insert(Node_Dec,1,($1));}
 Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp ASSIGNOP error SEMI{
         $$ = insert(Node_Exp,0);
-        SyntaxError = 1;
         PrintSyntaxError("Expression error",$4->line);
     }
     | Exp AND Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
@@ -156,12 +154,15 @@ Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | NEGETIVE Exp {$$ = insert(Node_Exp,2,($1),($2));}
     | NOT Exp {$$ = insert(Node_Exp,2,($1),($2));}
     | ID LP Args RP {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
+    | ID LP error RP{
+        $$ = insert(Node_Exp,0);
+        PrintSyntaxError("Function call args error",$1->line);
+    }
     | ID LP RP {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp LB Exp RB {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
     | Exp LB error RB{
         //数组访问错误a[3,4],a[]
         $$ = insert(Node_Exp,0);
-        SyntaxError = 1;
         PrintSyntaxError("array access error",$1->line);
     }
     | Exp DOT ID {$$ = insert(Node_Exp,3,($1),($2),($3));}
@@ -171,13 +172,11 @@ Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | INT error ID{
         //return 表达式错误 23GG这样的
         $$ = insert(Node_Exp,0);
-        SyntaxError = 1;
         PrintSyntaxError("Bad Integer",$1->line);
     }
     | FLOAT error ID{
         //return 表达式错误 0.12e这样的
         $$ = insert(Node_Exp,0);
-        SyntaxError = 1;
         PrintSyntaxError("Bad Float",$1->line);
     }
     ;
@@ -188,7 +187,7 @@ Args : Exp COMMA Args {$$ = insert(Node_Args,3,($1),($2),($3));}
 
 void yyerror(char* msg){
     SyntaxError = 1;
-    fprintf(stderr,"error: %s\n",msg);
+    // fprintf(stderr,"error: %s\n",msg);
 }
 
 void PrintSyntaxError(char* msg,int line){
