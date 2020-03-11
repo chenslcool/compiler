@@ -186,7 +186,7 @@ Args : Exp COMMA Args {$$ = insert(Node_Args,3,($1),($2),($3));}
 %%
 
 void yyerror(char* msg){
-    SyntaxError = 1;
+    SyntaxError = 1; 
     // fprintf(stderr,"error: %s\n",msg);
 }
 
