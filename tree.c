@@ -236,7 +236,7 @@ void preTraverse(struct TreeNode *r, int spaceNum)
                 break;
                 case Node_Sepcifier:
                 {
-                    printf("Sepcifier (%d)", r->line);
+                    printf("Specifier (%d)", r->line);
                 }
                 break;
                 case Node_StructSpecifier:
@@ -261,7 +261,7 @@ void preTraverse(struct TreeNode *r, int spaceNum)
                 break;
                 case Node_FuncDec:
                 {
-                    printf("FuncDec (%d)", r->line);
+                    printf("FunDec (%d)", r->line);
                 }
                 break;
                 case Node_VarList:
@@ -276,7 +276,7 @@ void preTraverse(struct TreeNode *r, int spaceNum)
                 break;
                 case Node_Compst:
                 {
-                    printf("Compst (%d)", r->line);
+                    printf("CompSt (%d)", r->line);
                 }
                 break;
                 case Node_StmtList:

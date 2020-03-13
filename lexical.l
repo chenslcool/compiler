@@ -199,7 +199,7 @@ id {_letter}(({_letter}|{digit})*)
 }
 . {
     SyntaxError = 1;
-    printf("Error type A at line %d:Mysterious character \'%c\'.\n",yylineno,*yytext);
+    printf("Error type A at line %d: Mysterious character \'%c\'.\n",yylineno,*yytext);
 }
 %%
 void preSetYylval(int type)

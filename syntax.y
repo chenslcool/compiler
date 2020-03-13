@@ -60,14 +60,17 @@ ExtDefList : ExtDef ExtDefList {$$ = insert(Node_ExtDefList,2,($1),($2));}
 ExtDef : Sepcifier ExtDecList SEMI {$$ = insert(Node_ExtDef,3,($1),($2),($3));}
     | Sepcifier SEMI {$$ = insert(Node_ExtDef,2,($1),($2));}
     | Sepcifier FuncDec Compst {$$ = insert(Node_ExtDef,3,($1),($2),($3));}
-    | Sepcifier FuncDec error {
-        $$ = insert(Node_ExtDef,0);
-        PrintSyntaxError("Function define error",$1->line);
-    }
     | Sepcifier error SEMI{
         //int a = 4;不能赋值
         $$ = insert(Node_ExtDef,0);
         PrintSyntaxError("ExtDef error",$1->line);
+    }
+    | Sepcifier error{
+        $$ = insert(Node_ExtDef,0);
+        PrintSyntaxError("ExtDef error",$1->line);
+    }
+    | error{
+        
     }
     ;
 ExtDecList : VarDec {$$ = insert(Node_ExtDecList,1,($1));}
@@ -115,16 +118,19 @@ StmtList : Stmt StmtList {$$ = insert(Node_StmtList,2,($1),($2));}
     | {$$ = insert(Node_StmtList,0);}
     ;
 Stmt : Exp SEMI {$$ = insert(Node_Stmt,2,($1),($2));}
+    | Exp error SEMI{
+        $$ = insert(Node_Stmt,0);
+        PrintSyntaxError("Exp statement error",$1->line);
+    }
     | Exp error{
         $$ = insert(Node_Stmt,0);
         PrintSyntaxError("Exp statement error",$1->line);
     }
     | Compst {$$ = insert(Node_Stmt,1,($1));}
     | RETURN Exp SEMI {$$ = insert(Node_Stmt,3,($1),($2),($3));}
-    | RETURN error RC { 
-        //return 缺失';''
+    | RETURN error SEMI {
         $$ = insert(Node_Stmt,0);
-        PrintSyntaxError("missing ';' in return statement",$1->line);
+        PrintSyntaxError("Return statement error",$1->line);
     }
     | IF LP Exp RP Stmt %prec LOWER_THEN_ELSE {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
     | IF LP Exp RP Stmt ELSE Stmt {$$ = insert(Node_Stmt,7,($1),($2),($3),($4),($5),($6),($7));}
@@ -151,10 +157,6 @@ Dec : VarDec {$$ = insert(Node_Dec,1,($1));}
     | VarDec ASSIGNOP Exp {$$ = insert(Node_Dec,3,($1),($2),($3));}
     ;
 Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
-    | Exp ASSIGNOP error SEMI{
-        $$ = insert(Node_Exp,0);
-        PrintSyntaxError("Expression error",$4->line);
-    }
     | Exp AND Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp OR Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp RELOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
@@ -166,7 +168,7 @@ Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | NEGETIVE Exp {$$ = insert(Node_Exp,2,($1),($2));}
     | NOT Exp {$$ = insert(Node_Exp,2,($1),($2));}
     | ID LP Args RP {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
-    | ID LP error RP{
+    | ID LP error SEMI{
         $$ = insert(Node_Exp,0);
         PrintSyntaxError("Function call args error",$1->line);
     }
