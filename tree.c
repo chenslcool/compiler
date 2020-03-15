@@ -30,6 +30,7 @@ struct TreeNode *insert(int type, int n, ...)
         }
         va_end(vl);
         // printf("\n");
+        parent->lastLine = parent->children[n-1]->lastLine;
     }
     return parent;
 }

@@ -199,7 +199,7 @@ id {_letter}(({_letter}|{digit})*)
 }
 . {
     SyntaxError = 1;
-    printf("Error type A at line %d: Mysterious character \'%c\'.\n",yylineno,*yytext);
+    fprintf(stderr,"Error type A at line %d: Mysterious character \'%c\'.\n",yylineno,*yytext);
 }
 %%
 void preSetYylval(int type)
@@ -208,4 +208,5 @@ void preSetYylval(int type)
 	yylval.node->type = type;
     yylval.node->numChildren = 0;
     yylval.node->line = yylineno;
+    yylval.node->lastLine = yylineno;
 }

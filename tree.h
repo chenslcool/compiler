@@ -79,6 +79,7 @@ struct TreeNode
     int numChildren;//子女数量
     struct TreeNode** children;//需要动态分配
     int line;//第一次出现的行号，依赖于children[0]的line
+    int lastLine;
 };
 
 //判断r是否为词法单元

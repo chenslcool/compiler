@@ -67,7 +67,7 @@ ExtDef : Sepcifier ExtDecList SEMI {$$ = insert(Node_ExtDef,3,($1),($2),($3));}
     }
     | Sepcifier error{
         $$ = insert(Node_ExtDef,0);
-        PrintSyntaxError("ExtDef error",$1->line);
+        PrintSyntaxError("ExtDef error",$1->lastLine);
     }
     | error{
         
@@ -122,7 +122,7 @@ Stmt : Exp SEMI {$$ = insert(Node_Stmt,2,($1),($2));}
         $$ = insert(Node_Stmt,0);
         PrintSyntaxError("Exp statement error",$1->line);
     }
-    | Exp error{
+    | Exp error RC{
         $$ = insert(Node_Stmt,0);
         PrintSyntaxError("Exp statement error",$1->line);
     }
@@ -134,11 +134,6 @@ Stmt : Exp SEMI {$$ = insert(Node_Stmt,2,($1),($2));}
     }
     | IF LP Exp RP Stmt %prec LOWER_THEN_ELSE {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
     | IF LP Exp RP Stmt ELSE Stmt {$$ = insert(Node_Stmt,7,($1),($2),($3),($4),($5),($6),($7));}
-    | IF LP Exp RP error SEMI{
-        //if 出错
-        $$ = insert(Node_Stmt,0);
-        PrintSyntaxError("Missing ';'",$1->line);
-    }
     | WHILE LP Exp RP Stmt {$$ = insert(Node_Stmt,5,($1),($2),($3),($4),($5));}
     ;
 DefList : Def DefList {$$ = insert(Node_DefList,2,($1),($2));}
@@ -168,10 +163,6 @@ Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | NEGETIVE Exp {$$ = insert(Node_Exp,2,($1),($2));}
     | NOT Exp {$$ = insert(Node_Exp,2,($1),($2));}
     | ID LP Args RP {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
-    | ID LP error SEMI{
-        $$ = insert(Node_Exp,0);
-        PrintSyntaxError("Function call args error",$1->line);
-    }
     | ID LP RP {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | Exp LB Exp RB {$$ = insert(Node_Exp,4,($1),($2),($3),($4));}
     | Exp LB error RB{
@@ -205,5 +196,5 @@ void yyerror(char* msg){
 }
 
 void PrintSyntaxError(char* msg,int line){
-    printf("Error type B at Line %d: %s.\n",line,msg);
+    fprintf(stderr,"Error type B at Line %d: %s.\n",line,msg);
 }
