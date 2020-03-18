@@ -174,16 +174,6 @@ Exp : Exp ASSIGNOP Exp {$$ = insert(Node_Exp,3,($1),($2),($3));}
     | ID {$$ = insert(Node_Exp,1,($1));}
     | INT {$$ = insert(Node_Exp,1,($1));}
     | FLOAT {$$ = insert(Node_Exp,1,($1));}
-    | INT error ID{
-        //return 表达式错误 23GG这样的
-        $$ = insert(Node_Exp,0);
-        PrintSyntaxError("Bad Integer",$1->line);
-    }
-    | FLOAT error ID{
-        //return 表达式错误 0.12e这样的
-        $$ = insert(Node_Exp,0);
-        PrintSyntaxError("Bad Float",$1->line);
-    }
     ;
 Args : Exp COMMA Args {$$ = insert(Node_Args,3,($1),($2),($3));}
     | Exp {$$ = insert(Node_Args,1,($1));}

@@ -22,6 +22,11 @@ octal 0({digit8}+)
 hexical (0[Xx])({digit16}+)
 float ({digits})(\.)({digits})
 id {_letter}(({_letter}|{digit})*)
+badHexical {hexical}{id}
+badOctal ({octal}{id})|({octal}[89]+{id}?)|(0[89]+{id}?)
+badDecimal {decimal}{id}
+badFloat {float}{id}
+badInteger {badDecimal}|{badOctal}|{badHexical}
 %option yylineno
 %%
 {whiteSpace}+ {
@@ -189,6 +194,24 @@ id {_letter}(({_letter}|{digit})*)
     char* ptr;
     yylval.node->val.intVal = (int)strtol(yytext,&ptr,16);
     return INT;
+}
+{badInteger} {
+    SyntaxError = 1;
+    //错误的整数
+    preIsExp = 1;
+    preSetYylval(Node_INT);
+    yylval.node->val.intVal = 0;//intVal是什么不重要，反正出错了
+    fprintf(stderr,"Error type A at line %d: Bad Integer : \"%s\".\n",yylineno,yytext);
+    return INT;//当成正确的INT，不影响语法分析
+}
+{badFloat} {
+    SyntaxError = 1;
+    //错误的整数
+    preIsExp = 1;
+    preSetYylval(Node_FLOAT);
+    yylval.node->val.floatVal = 0;//intVal是什么不重要，反正出错了
+    fprintf(stderr,"Error type A at line %d: Bad Float : \"%s\".\n",yylineno,yytext);
+    return FLOAT;//当成正确的FLOAT，不影响语法分析
 }
 {id} {
 	preIsExp = 1;
