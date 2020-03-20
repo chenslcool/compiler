@@ -201,7 +201,7 @@ badInteger {badDecimal}|{badOctal}|{badHexical}
     preIsExp = 1;
     preSetYylval(Node_INT);
     yylval.node->val.intVal = 0;//intVal是什么不重要，反正出错了
-    fprintf(stderr,"Error type A at line %d: Bad Integer : \"%s\".\n",yylineno,yytext);
+    printf("Error type A at line %d: Bad Integer : \"%s\".\n",yylineno,yytext);
     return INT;//当成正确的INT，不影响语法分析
 }
 {badFloat} {
@@ -210,7 +210,7 @@ badInteger {badDecimal}|{badOctal}|{badHexical}
     preIsExp = 1;
     preSetYylval(Node_FLOAT);
     yylval.node->val.floatVal = 0;//intVal是什么不重要，反正出错了
-    fprintf(stderr,"Error type A at line %d: Bad Float : \"%s\".\n",yylineno,yytext);
+    printf("Error type A at line %d: Bad Float : \"%s\".\n",yylineno,yytext);
     return FLOAT;//当成正确的FLOAT，不影响语法分析
 }
 {id} {
@@ -222,7 +222,7 @@ badInteger {badDecimal}|{badOctal}|{badHexical}
 }
 . {
     SyntaxError = 1;
-    fprintf(stderr,"Error type A at line %d: Mysterious character \'%c\'.\n",yylineno,*yytext);
+    printf("Error type A at line %d: Mysterious character \'%c\'.\n",yylineno,*yytext);
 }
 %%
 void preSetYylval(int type)
