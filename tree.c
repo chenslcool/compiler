@@ -55,7 +55,7 @@ void preTraverse(struct TreeNode *r, int spaceNum)
             {
             case Node_ID:
             {
-                printf("ID: %s", r->val.idName);
+                printf("ID: %s", r->idName);
             }
             break;
             case Node_TYPE:

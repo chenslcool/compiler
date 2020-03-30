@@ -65,21 +65,30 @@
 //对于一个语法单元，如果他是词法单元int id float，还有数值信息
 union TreeVal
 {
-    char* idName;//ID
     int intVal;
     float floatVal;
     int typeVal;//int 和 float区分
 };
 
+//节点属性，分别作为综合属性和继承属性,不同语法节点的属性类型不一样. eg:compst继承属性是函数的返回值类型
+union Attr
+{
+    /* data */
+};
+
+
 //多叉树的实现
 struct TreeNode
 {
-    int type;//节点类型:终结符或者非终结符,具体到id,int,expr...
+    char* idName;//int a[][],所以不只是ID节点需要name
+    int type;//节点类型:语法层面:终结符或者非终结符,具体到id,int,expr...
     union TreeVal val;
     int numChildren;//子女数量
     struct TreeNode** children;//需要动态分配
     int line;//第一次出现的行号，依赖于children[0]的line
     int lastLine;
+    union Attr synAttr;//综合属性
+    union Attr inhAttr;//继承属性
 };
 
 //判断r是否为词法单元

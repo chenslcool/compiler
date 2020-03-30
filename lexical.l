@@ -216,8 +216,8 @@ badInteger {badDecimal}|{badOctal}|{badHexical}
 {id} {
 	preIsExp = 1;
     preSetYylval(Node_ID);
-    yylval.node->val.idName = (char*)malloc(sizeof(char)*(yyleng+1));
-    memcpy(yylval.node->val.idName,yytext,sizeof(char)*(yyleng+1));
+    yylval.node->idName = (char*)malloc(sizeof(char)*(yyleng+1));
+    memcpy(yylval.node->idName,yytext,sizeof(char)*(yyleng+1));
     return ID;
 }
 . {
