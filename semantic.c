@@ -151,14 +151,38 @@ void handleExtDef(struct TreeNode* r){
     assert(r->type == Node_ExtDef);
     if(r->numChildren == 2){//Extdef -> Specifier SEMI,对应于结构体定义
         handleSpecifier(r->children[0]);
+        printType(r->children[0]->synAttr.type,0);
     }
-    else if(r->children[2]->type == Node_SEMI){//Extdef -> Specifier ExtDEcList SEMI,对应于全局变量定义
+    else if(r->children[2]->type == Node_SEMI){//Extdef -> Specifier ExtDecList SEMI,对应于全局变量定义
         handleSpecifier(r->children[0]);//这时候Specifier的类型信息已经存在synAttr中,synAttr作为ExtDecList的继承属性
         //设置ExtDecList的inhAttr,在ExtDecList的解析中完成变量表的修改
-        //TODO
+        //通过继承属性传下去
+        r->children[1]->inhAttr.type = r->children[0]->synAttr.type;
+        handleExtDecList(r->children[1]);
+        printType(r->children[1]->synAttr.defList->type,0);
+    }
+    else if(r->children[2]->type == Node_Compst){//函数定义
 
     }
-    printType(r->children[0]->synAttr.type,0);
+}
+
+void handleExtDecList(struct TreeNode* r){
+    //类比DecList应该没问题吧???
+    assert(r->type == Node_ExtDecList);
+    //全局变量的声明
+    if(r->numChildren == 1){//ExtDecList -> VarDec
+        r->children[0]->inhAttr.type = r->inhAttr.type;//类型继承下去
+        handleVarDec(r->children[0]);//varDec利用继承的类型确定类型信息,返回一个FieldList，仅包含一个节点
+        r->synAttr.defList = r->children[0]->synAttr.defList; 
+    }
+    else{//ExtDecList -> VarDec Comma ExtDecList
+        r->children[0]->inhAttr.type = r->inhAttr.type;//类型继承下去
+        r->children[2]->inhAttr.type = r->inhAttr.type;//类型继承下去
+        handleVarDec(r->children[0]);
+        handleExtDecList(r->children[2]);
+        r->children[0]->synAttr.defList->next = r->children[2]->synAttr.defList;//连上了
+        r->synAttr.defList = r->children[0]->synAttr.defList; 
+    }
 }
 
 void handleSpecifier(struct TreeNode* r){
@@ -308,7 +332,7 @@ void handleVarDec(struct TreeNode* r){
     assert(r->type == Node_VarDec);
     if(r->numChildren == 1){//VarDec -> ID
         r->synAttr.defList = (struct FieldList *)malloc(sizeof(struct FieldList));
-        r->synAttr.defList->name = r->children[0]->idName;
+        r->synAttr.defList->name = r->children[0]->idName;//就是这个域的名字
         r->synAttr.defList->type = r->inhAttr.type;//继承的类型
         r->synAttr.defList->next = NULL;
     }
@@ -316,7 +340,7 @@ void handleVarDec(struct TreeNode* r){
         r->children[0]->inhAttr.type = r->inhAttr.type;//类型继承下去
         handleVarDec(r->children[0]);
         r->synAttr.defList = (struct FieldList *)malloc(sizeof(struct FieldList));
-        r->synAttr.defList->name = r->children[0]->synAttr.defList->name;//就是ID的名字
+        r->synAttr.defList->name = r->children[0]->synAttr.defList->name;//就是这个域的名字int a[2][3]的"a"
         r->synAttr.defList->type = (struct Type *)malloc(sizeof(struct Type));
         r->synAttr.defList->type->kind = ARRAY;
         r->synAttr.defList->type->info.array = (struct Array *)malloc(sizeof(struct Array));

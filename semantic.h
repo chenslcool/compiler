@@ -105,4 +105,7 @@ void handleDec(struct TreeNode* r);
 
 void handleVarDec(struct TreeNode* r);
 
+void handleExtDecList(struct TreeNode* r);
+
+
 #endif
