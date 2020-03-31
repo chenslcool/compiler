@@ -62,6 +62,7 @@ struct Structure
     struct Structure* next;//这个next指针只在结构体表项中有用
 };
 
+
 //根据name查表
 struct Func* searchFuncTable(char*name);
 struct Structure* searchStructureTable(char*name);
@@ -71,6 +72,9 @@ struct Variable* searchVariableTable(char*name);
 void insertFuncTable(struct Func* func);
 void insertStructureTable(struct Structure*structure);
 void insertVariableTable(struct Variable*variable);
+
+//打印类型信息，便于调试
+void printType(struct Type*,int nrSpace);
 
 //根据name取得哈希值，得到table表项地址
 unsigned hash(char*name);

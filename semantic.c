@@ -86,6 +86,44 @@ struct Variable* searchVariableTable(char*name){
     return head;
 }
 
+void printType(struct Type*typePtr,int nrSpace){
+    if(typePtr != NULL){
+        switch (typePtr->kind)
+        {
+            case BASIC:{
+                if(typePtr->info.basicType == TYPE_INT){
+                     printSpace(nrSpace);
+                     printf("Kind:BASIC(int)\n");
+                }
+                else{
+                    printSpace(nrSpace);
+                    printf("Kind:BASIC(float)\n");
+                }
+            }break;
+            case ARRAY:{
+                printSpace(nrSpace);
+                printf("Kind:ARRAY,size = %d\n",typePtr->info.array->size);
+                printType(typePtr->info.array->elem,nrSpace+2);
+            }break;
+            case STRUCTURE:{
+                printSpace(nrSpace);
+                printf("Kind:STRUCTURE:%s\n",typePtr->info.structure->name);
+                struct FieldList* ptr = typePtr->info.structure->structureInfo;
+                while (ptr != NULL)
+                {
+                    printSpace(nrSpace);
+                    printf("name=%s\n",ptr->name);
+                    printType(ptr->type,nrSpace+2);
+                    ptr = ptr->next;
+                }    
+            }break;
+            default:{
+                assert(0);
+            }
+        }
+    }
+}
+
 void handleProgram(struct TreeNode* r){
     assert(r->type == Node_Program);
     if((r->numChildren == 1) && (r->children[0]->type == Node_ExtDefList)){
@@ -118,7 +156,9 @@ void handleExtDef(struct TreeNode* r){
         handleSpecifier(r->children[0]);//这时候Specifier的类型信息已经存在synAttr中,synAttr作为ExtDecList的继承属性
         //设置ExtDecList的inhAttr,在ExtDecList的解析中完成变量表的修改
         //TODO
+
     }
+    printType(r->children[0]->synAttr.type,0);
 }
 
 void handleSpecifier(struct TreeNode* r){
@@ -163,7 +203,7 @@ void handleStructSpecifier(struct TreeNode* r){
     else{
         //structSpecifier -> struct OpaTag LC DefList RC
         //optTag -> ID | epsilon
-        handleOptTag(r->children[0]);//optag = epsilon(根据optTag的name是否为null)则往结构体表插入(检查重名)，否则不插入。
+        handleOptTag(r->children[1]);//optag = epsilon(根据optTag的name是否为null)则往结构体表插入(检查重名)，否则不插入。
         //但是r的综合属性:结构体类型还是要写的
         handleDefList(r->children[3]);
         //children[3]的综合属性应该是一个FieldLList
@@ -171,10 +211,10 @@ void handleStructSpecifier(struct TreeNode* r){
         r->synAttr.type->kind = STRUCTURE;
         r->synAttr.type->info.structure = (struct Structure *)malloc(sizeof(struct Structure));
         r->synAttr.type->info.structure->structureInfo = r->children[3]->synAttr.defList;//defList自己分配了空间
-        r->synAttr.type->info.structure->name = r->children[0]->idName;
+        r->synAttr.type->info.structure->name = r->children[1]->idName;
         r->synAttr.type->info.structure->next = NULL;
         //根据optTag是否有名决定插入结构体表
-        if(r->children[0]->idName != NULL){
+        if(r->children[1]->idName != NULL){
             //有名
             insertStructureTable(r->synAttr.type->info.structure);
         }
@@ -203,11 +243,19 @@ void handleDefList(struct TreeNode* r){
         r->synAttr.defList = NULL;
     }
     else{        
-        handleDef(r->children[0]);//children[0]的综合属性是FieldList，只有一个节点
+        handleDef(r->children[0]);//children[0]的综合属性是FieldList，可能有多个节点,至少一个
         handleDefList(r->children[1]);//是一串FieldList,可以 为NULL
-        //采用头部插入的方式
-        r->children[0]->synAttr.defList->next = r->children[1]->synAttr.defList;
-        r->synAttr.defList = r->children[0]->synAttr.defList;//连上了
+        //采用头部插入的方式，但是对于int a,b;的情况，child[0]的综合属性可能有多个节点，找最后一个
+        struct FieldList * tmp = r->children[0]->synAttr.defList;
+        //TODO modify 这样有点低效，后期考虑效率，需要修改数据结构
+        while (tmp->next != NULL)
+        {
+            tmp = tmp->next;
+        }
+        // r->children[0]->synAttr.defList->next = r->children[1]->synAttr.defList;
+        // r->synAttr.defList = r->children[0]->synAttr.defList;//连上了
+        tmp->next = r->children[1]->synAttr.defList;
+        r->synAttr.defList = r->children[0]->synAttr.defList;
     }
 }
 
@@ -268,13 +316,14 @@ void handleVarDec(struct TreeNode* r){
         r->children[0]->inhAttr.type = r->inhAttr.type;//类型继承下去
         handleVarDec(r->children[0]);
         r->synAttr.defList = (struct FieldList *)malloc(sizeof(struct FieldList));
-        r->synAttr.defList->name = r->children[0]->idName;//就是ID的名字
+        r->synAttr.defList->name = r->children[0]->synAttr.defList->name;//就是ID的名字
         r->synAttr.defList->type = (struct Type *)malloc(sizeof(struct Type));
         r->synAttr.defList->type->kind = ARRAY;
         r->synAttr.defList->type->info.array = (struct Array *)malloc(sizeof(struct Array));
         r->synAttr.defList->type->info.array->elem = r->children[0]->synAttr.defList->type;
         assert(r->children[2]->type == Node_INT);
         r->synAttr.defList->type->info.array->size = r->children[2]->val.intVal;//int a[2][3]
+        //Attention!这里数组各维大小我其实是写反的，但是好像问题不大?
         r->synAttr.defList->next = NULL;
     }
 }
