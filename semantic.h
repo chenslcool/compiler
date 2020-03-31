@@ -87,25 +87,26 @@ void handleExtDef(struct TreeNode* r);
 
 void handleExtDefList(struct TreeNode* r);
 
-void handleSpecifier(struct TreeNode* r);
+struct Type* handleSpecifier(struct TreeNode* r);
 
-void handleStructSpecifier(struct TreeNode* r);
+struct FieldList* handleExtDecList(struct TreeNode* r,struct Type* typrPtr);
 
-void handleTag(struct TreeNode* r);
+struct Type* handleStructSpecifier(struct TreeNode* r);
 
-void handleOptTag(struct TreeNode* r);
+char* handleTag(struct TreeNode* r);
 
-void handleDefList(struct TreeNode* r);
+char* handleOptTag(struct TreeNode* r);
 
-void handleDef(struct TreeNode* r);
+struct FieldList* handleDefList(struct TreeNode* r);
 
-void handleDecList(struct TreeNode* r);
+struct FieldList* handleDef(struct TreeNode* r);
 
-void handleDec(struct TreeNode* r);
+struct FieldList* handleDecList(struct TreeNode* r,struct Type * typtPtr);
 
-void handleVarDec(struct TreeNode* r);
+struct FieldList* handleDec(struct TreeNode* r,struct Type * typtPtr);
 
-void handleExtDecList(struct TreeNode* r);
+struct Type* handleVarDec(struct TreeNode* r,struct Type * typtPtr,char**namePtr);
 
+struct FieldList* handleVarDec2(struct TreeNode* r,struct Type * typePtr);
 
 #endif
