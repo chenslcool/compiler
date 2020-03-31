@@ -124,6 +124,17 @@ void printType(struct Type*typePtr,int nrSpace){
     }
 }
 
+void printFieldList(struct FieldList* ptr,int nrSpace){
+    while (ptr != NULL)
+    {
+        printSpace(nrSpace);
+        printf("name:%s\n",ptr->name);
+        printType(ptr->type,nrSpace);
+        ptr = ptr->next;
+    }
+    
+}
+
 void handleProgram(struct TreeNode* r){
     assert(r->type == Node_Program);
     if((r->numChildren == 1) && (r->children[0]->type == Node_ExtDefList)){
@@ -144,13 +155,14 @@ void handleExtDefList(struct TreeNode* r){
     else if(r->numChildren != 0){
         assert(0);
     }
-}
+}  
 
 
 void handleExtDef(struct TreeNode* r){
     assert(r->type == Node_ExtDef);
     if(r->numChildren == 2){//Extdef -> Specifier SEMI,对应于结构体定义
         handleSpecifier(r->children[0]);
+        //打印定义的结构体
         printType(r->children[0]->synAttr.type,0);
     }
     else if(r->children[2]->type == Node_SEMI){//Extdef -> Specifier ExtDecList SEMI,对应于全局变量定义
@@ -159,7 +171,10 @@ void handleExtDef(struct TreeNode* r){
         //通过继承属性传下去
         r->children[1]->inhAttr.type = r->children[0]->synAttr.type;
         handleExtDecList(r->children[1]);
-        printType(r->children[1]->synAttr.defList->type,0);
+
+        // printType(r->children[1]->synAttr.defList->type,0);
+        //打印全局变量
+        printFieldList(r->children[1]->synAttr.defList,0);
     }
     else if(r->children[2]->type == Node_Compst){//函数定义
 
