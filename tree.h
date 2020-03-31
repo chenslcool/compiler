@@ -58,8 +58,8 @@
 #define Node_Args 49
 
 //用于区分type:int float
-#define TYPE_INT 50
-#define TYPE_FLOAT 51
+// #define TYPE_INT 50
+// #define TYPE_FLOAT 51
 
 
 //对于一个语法单元，如果他是词法单元int id float，还有数值信息
@@ -67,13 +67,17 @@ union TreeVal
 {
     int intVal;
     float floatVal;
-    int typeVal;//int 和 float区分
+    enum{
+        TYPE_INT,
+        TYPE_FLOAT
+    }typeVal;//int 和 float区分
 };
 
 //节点属性，分别作为综合属性和继承属性,不同语法节点的属性类型不一样. eg:compst继承属性是函数的返回值类型
 union Attr
 {
-    /* data */
+    struct Type* type;//类型，Specifier用到
+    struct FieldList* defList;//一系列定义int a,int b
 };
 
 
@@ -82,7 +86,7 @@ struct TreeNode
 {
     char* idName;//int a[][],所以不只是ID节点需要name
     int type;//节点类型:语法层面:终结符或者非终结符,具体到id,int,expr...
-    union TreeVal val;
+    union TreeVal val;//用于需要记录具体信息的叶子节点:INT,FLOAT和TYPE(什么基本类型)
     int numChildren;//子女数量
     struct TreeNode** children;//需要动态分配
     int line;//第一次出现的行号，依赖于children[0]的line
@@ -102,6 +106,7 @@ struct TreeNode* insert(int type,int n,...);
 
 //先序遍历
 void preTraverse(struct TreeNode*r,int spaceNum);
+
 
 extern struct TreeNode* root;//全局变量，语法树的根 
 

@@ -1,37 +1,11 @@
-testing ../../test/lab1/1.txt
-Error type A at line 4: Mysterious character '~'.
-testing ../../test/lab1/10.txt
-Error type B at Line 1: ExtDef error.
-Error type B at Line 9: ExtDef error.
-testing ../../test/lab1/11.txt
-Error type B at Line 5: ExtDef error.
-Error type B at Line 6: ExtDef error.
-Error type B at Line 13: Return statement error.
-Error type B at Line 30: array access error.
-Error type B at Line 31: Exp statement error.
-testing ../../test/lab1/12.txt
-Error type B at Line 2: ExtDef error.
-Error type A at line 9: Mysterious character ':'.
-Error type B at Line 9: Function header define error.
-Error type B at Line 16: Exp statement error.
-Error type B at Line 22: Return statement error.
-testing ../../test/lab1/13.txt
-Error type A at line 3: Bad Integer : "0xFs396".
-Error type A at line 4: Bad Integer : "0xxF396".
-testing ../../test/lab1/14.txt
-Error type A at line 4: Bad Integer : "018".
-Error type B at Line 4: Loacl variable error.
-testing ../../test/lab1/2.txt
-Error type B at Line 5: array access error.
-Error type B at Line 6: Exp statement error.
-testing ../../test/lab1/3.txt
+./parser ../Test/test1.cmm
 Program (1)
   ExtDefList (1)
     ExtDef (1)
       Specifier (1)
         TYPE: int
       FunDec (1)
-        ID: inc
+        ID: func_test
         LP
         RP
       CompSt (2)
@@ -43,106 +17,10 @@ Program (1)
             DecList (3)
               Dec (3)
                 VarDec (3)
-                  ID: i
-            SEMI
-        StmtList (4)
-          Stmt (4)
-            Exp (4)
-              Exp (4)
-                ID: i
-              ASSIGNOP
-              Exp (4)
-                Exp (4)
-                  ID: i
-                PLUS
-                Exp (4)
-                  INT: 1
-            SEMI
-        RC
-testing ../../test/lab1/4.txt
-Program (1)
-  ExtDefList (1)
-    ExtDef (1)
-      Specifier (1)
-        StructSpecifier (1)
-          STRUCT
-          OptTag (1)
-            ID: Complex
-          LC
-          DefList (3)
-            Def (3)
-              Specifier (3)
-                TYPE: float
-              DecList (3)
-                Dec (3)
-                  VarDec (3)
-                    ID: real
-                COMMA
-                DecList (3)
-                  Dec (3)
-                    VarDec (3)
-                      ID: image
-              SEMI
-          RC
-      SEMI
-    ExtDefList (5)
-      ExtDef (5)
-        Specifier (5)
-          TYPE: int
-        FunDec (5)
-          ID: main
-          LP
-          RP
-        CompSt (6)
-          LC
-          DefList (7)
-            Def (7)
-              Specifier (7)
-                StructSpecifier (7)
-                  STRUCT
-                  Tag (7)
-                    ID: Complex
-              DecList (7)
-                Dec (7)
-                  VarDec (7)
-                    ID: x
-              SEMI
-          StmtList (8)
-            Stmt (8)
-              Exp (8)
-                Exp (8)
-                  Exp (8)
-                    ID: y
-                  DOT
-                  ID: image
-                ASSIGNOP
-                Exp (8)
-                  FLOAT: 3.500000
-              SEMI
-          RC
-testing ../../test/lab1/5.txt
-Program (1)
-  ExtDefList (1)
-    ExtDef (1)
-      Specifier (1)
-        TYPE: int
-      FunDec (1)
-        ID: main
-        LP
-        RP
-      CompSt (2)
-        LC
-        DefList (3)
-          Def (3)
-            Specifier (3)
-              TYPE: int
-            DecList (3)
-              Dec (3)
-                VarDec (3)
-                  ID: i
+                  ID: _dec_
                 ASSIGNOP
                 Exp (3)
-                  INT: 83
+                  INT: 947
             SEMI
           DefList (4)
             Def (4)
@@ -151,19 +29,54 @@ Program (1)
               DecList (4)
                 Dec (4)
                   VarDec (4)
-                    ID: j
+                    ID: _oct_
                   ASSIGNOP
                   Exp (4)
-                    INT: 63
+                    INT: 453
               SEMI
+            DefList (5)
+              Def (5)
+                Specifier (5)
+                  TYPE: int
+                DecList (5)
+                  Dec (5)
+                    VarDec (5)
+                      ID: _dhex_
+                    ASSIGNOP
+                    Exp (5)
+                      Exp (5)
+                        INT: 1047228
+                      MINUS
+                      Exp (5)
+                        ID: _oct_
+                SEMI
+              DefList (6)
+                Def (6)
+                  Specifier (6)
+                    TYPE: int
+                  DecList (6)
+                    Dec (6)
+                      VarDec (6)
+                        ID: _result_
+                      ASSIGNOP
+                      Exp (6)
+                        Exp (6)
+                          MINUS
+                          Exp (6)
+                            ID: _dhex_
+                        PLUS
+                        Exp (6)
+                          Exp (6)
+                            ID: _oct_
+                          STAR
+                          Exp (6)
+                            LP
+                            Exp (6)
+                              Exp (6)
+                                ID: _dec_
+                              MINUS
+                              Exp (6)
+                                INT: 9213
+                            RP
+                  SEMI
         RC
-testing ../../test/lab1/6.txt
-Error type A at line 3: Bad Integer : "09".
-Error type A at line 4: Bad Integer : "0x3G".
-testing ../../test/lab1/7.txt
-Error type A at line 3: Bad Float : "1.05e".
-testing ../../test/lab1/8.txt
-Error type A at line 3: Bad Float : "1.05e".
-testing ../../test/lab1/9.txt
-Error type B at Line 1: ExtDef error.
-Error type B at Line 7: ExtDef error.
