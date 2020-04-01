@@ -11,6 +11,18 @@ void printError(int type,int line,char* msg){
     fprintf(stderr,"Error type %d at line %d:%s\n",type,line,msg);
 }
 
+void printFuncDec(struct Func* funcPtr,int nrSpace){
+    assert(funcPtr != NULL);
+    printSpace(nrSpace);
+    printf("function name:%s\n",funcPtr->name);
+    printSpace(nrSpace);
+    printf("function return type:\n");
+    printType(funcPtr->retType,nrSpace+2);
+    printSpace(nrSpace);
+    printf("function parameters:\n");
+    printFieldList(funcPtr->params,nrSpace+2);
+}
+
 unsigned hash(char *name,int sz)
 {
     unsigned val = 0, i;
@@ -227,6 +239,17 @@ void handleExtDef(struct TreeNode* r){
     else if((r->numChildren == 3) && (r->children[2]->type == Node_Compst)){
         //ExtDef -> Specifier FunDec Compst
         //TODO 函数部分
+        struct Func* funcPtr = handleFuncDec(r->children[1],typePtr);
+        //函数头加入函数表
+        if(searchFuncTable(funcPtr->name) == NULL){
+            insertFuncTable(funcPtr);
+        }
+        else{
+            //函数重定义
+            printError(4,r->children[0]->line,"Function redefined.");
+        }       
+        //函数体 
+        printFuncDec(funcPtr,0);
     }
     else{
         //ExtDef -> Specifier Semi
@@ -363,7 +386,7 @@ char* handleOptTag(struct TreeNode* r){
     return name;
 }
 
-struct FieldList* handleDefList(struct TreeNode* r,int isInStruc){
+struct FieldList* handleDefList(struct TreeNode* r,int noExp){
     assert(r->type == Node_DefList);
     if(r->numChildren == 0){
         //DefLst -> epsilon
@@ -371,8 +394,8 @@ struct FieldList* handleDefList(struct TreeNode* r,int isInStruc){
     }
     else{
         //DefLst -> Def DefList
-        struct FieldList* FL1 = handleDef(r->children[0],isInStruc);//数量>=1
-        struct FieldList* FL2 = handleDefList(r->children[1],isInStruc);//可能为空
+        struct FieldList* FL1 = handleDef(r->children[0],noExp);//数量>=1
+        struct FieldList* FL2 = handleDefList(r->children[1],noExp);//可能为空
         //找到FL1最后一个
         struct FieldList* tmp = FL1;
         while (tmp->next != NULL)
@@ -384,29 +407,29 @@ struct FieldList* handleDefList(struct TreeNode* r,int isInStruc){
     }
 }
 
-struct FieldList* handleDef(struct TreeNode* r,int isInStruc){
+struct FieldList* handleDef(struct TreeNode* r,int noExp){
     assert(r->type == Node_Def);
     //Def -> Specifier DecList Semi
     struct Type * typePtr = handleSpecifier(r->children[0]);
-    return handleDecList(r->children[1],typePtr,isInStruc);
+    return handleDecList(r->children[1],typePtr,noExp);
 }
 
-struct FieldList* handleDecList(struct TreeNode* r,struct Type * typePtr,int isInStruc){
+struct FieldList* handleDecList(struct TreeNode* r,struct Type * typePtr,int noExp){
     assert(r->type == Node_DecList);
     if(r->numChildren == 1){
         //DecList -> Dec
-        return handleDec(r->children[0],typePtr,isInStruc);
+        return handleDec(r->children[0],typePtr,noExp);
     }
     else{
         //DecList -> Dec comma Declist
-        struct FieldList* FL1 = handleDec(r->children[0],typePtr,isInStruc);
-        struct FieldList* FL2 = handleDecList(r->children[2],typePtr,isInStruc);
+        struct FieldList* FL1 = handleDec(r->children[0],typePtr,noExp);
+        struct FieldList* FL2 = handleDecList(r->children[2],typePtr,noExp);
         FL1->next = FL2;
         return FL1;
     }
 }
 
-struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int isInStruc){
+struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int noExp){
     assert(r->type == Node_Dec);
     if(r->numChildren == 1){
         //Dec -> VarDec
@@ -416,11 +439,11 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int isInStr
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
         FL->next = NULL;
-        FL->line = r->children[0]->line;
+        FL->line = r->children[0]->line; 
         return FL;
     }
     else{
-        if(isInStruc){
+        if(noExp){
             //结构体内不能初始化
             printError(15,r->children[0]->line,"Cannot initialize field in structure.");
         }
@@ -463,4 +486,56 @@ struct Variable* getVarPtr(struct FieldList*FL1,int line){
     varPtr->firstAppearanceLine = line;
     varPtr->varType = FL1->type;
     varPtr->next = NULL;
+}
+
+struct Func* handleFuncDec(struct TreeNode* r,struct Type * typePtr){
+    assert(r->type == Node_FuncDec);
+    struct Func* funcPtr = (struct Func*)malloc(sizeof(struct Func));
+    funcPtr->name = r->children[0]->idName;//ID
+    funcPtr->next = NULL;
+    funcPtr->retType = typePtr;
+    if(r->numChildren == 3){
+        //Func -> Id LP RP
+        funcPtr->params = NULL;//没有参数
+    }
+    else{
+        //Func -> Id LP VarList RP
+        funcPtr->params = handleVarList(r->children[2]);
+    }
+    return funcPtr;
+}
+
+struct FieldList* handleVarList(struct TreeNode* r){
+    assert(r->type == Node_VarList);
+    if(r->numChildren == 1){
+        //VarList -> ParamDec
+        return handleParamDec(r->children[0]);
+    }
+    else{
+        //VarList -> ParamDec comma ParamDec
+        struct FieldList* FL1 = handleParamDec(r->children[0]);
+        struct FieldList* FL2 = handleVarList(r->children[2]);
+        FL1->next = FL2;
+        return FL1;
+    }
+}
+
+struct FieldList* handleParamDec(struct TreeNode* r){
+    assert(r->type == Node_ParamDec);
+    //ParamDec -> Specifier varDec
+    struct Type* typePtr = handleSpecifier(r->children[0]);
+    struct FieldList *FL = (struct FieldList *)malloc(sizeof(struct FieldList));
+    FL->type = handleVarDec(r->children[1],typePtr,&(FL->name));
+    FL->line = r->children[1]->line;
+    FL->next = NULL;
+    //检查重名参数，注意全局作用域
+    if((searchStructureTable(FL->name) != NULL)||(searchVariableTable(FL->name) != NULL)){
+        //变量(形参)和变量、结构体重名
+        printError(3,FL->line,"Variable redefined.");
+    }
+    else{
+        struct Variable* varPtr = getVarPtr(FL,FL->line);
+        insertVariableTable(varPtr);
+    }
+    return FL;
 }

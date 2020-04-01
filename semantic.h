@@ -91,6 +91,12 @@ struct Variable* getVarPtr(struct FieldList*FL,int line);
 //打印类型信息，便于调试
 void printType(struct Type*,int nrSpace);
 
+//打印一系列域
+void printFieldList(struct FieldList* ptr,int nrSpace);
+
+//打印函数头
+void printFuncDec(struct Func* funcPtr,int nrSpace);
+
 //根据name取得哈希值，得到table表项地址
 unsigned hash(char*name,int sz);
 
@@ -126,5 +132,11 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typtPtr,int isInStr
 struct Type* handleVarDec(struct TreeNode* r,struct Type * typtPtr,char**namePtr);
 
 struct FieldList* handleVarDec2(struct TreeNode* r,struct Type * typePtr);
+
+struct Func* handleFuncDec(struct TreeNode* r,struct Type * typePtr);
+
+struct FieldList* handleVarList(struct TreeNode* r);
+
+struct FieldList* handleParamDec(struct TreeNode* r);
 
 #endif
