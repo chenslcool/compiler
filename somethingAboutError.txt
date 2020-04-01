@@ -9,3 +9,9 @@
     (2) 数组域初始化。如果初始化，这个field还在结构体中(handleDec)
 5. 错误4.函数名重定义
     不更新函数表
+6. 错误1.变量使用未定义
+    Exp 返回类型为NULL(handleExp)
+7. 错误7. 操作数类型或操作符不匹配
+    exp返回NULL(handleExp)
+8. 错误2. 函数调用未定义
+    Exp返回NULL

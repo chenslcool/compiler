@@ -4,84 +4,28 @@ Kind:STRUCTURE:S1
 name=i1
   Kind:BASIC(int)
 name=i2
-  Kind:ARRAY,size = 2
-    Kind:BASIC(int)
-name=i3
-  Kind:ARRAY,size = 1
-    Kind:ARRAY,size = 7
-      Kind:ARRAY,size = 4
-        Kind:BASIC(int)
-name=f1
-  Kind:ARRAY,size = 2
-    Kind:BASIC(float)
-name=f2
-  Kind:ARRAY,size = 5
-    Kind:ARRAY,size = 3
-      Kind:BASIC(float)
-name=f4
-  Kind:BASIC(float)
-name=f5
-  Kind:BASIC(float)
-name=i5
   Kind:BASIC(int)
-name=sss
-  Kind:ARRAY,size = 2
-    Kind:STRUCTURE:S2
-    name=i1
-      Kind:BASIC(int)
-    name=i2
-      Kind:ARRAY,size = 3
-        Kind:BASIC(int)
-    name=f1
-      Kind:ARRAY,size = 2
-        Kind:BASIC(float)
 name:a
 Kind:BASIC(int)
 function name:f
 function return type:
-  Kind:BASIC(int)
-function parameters:
-  name:p1
   Kind:STRUCTURE:S1
   name=i1
     Kind:BASIC(int)
   name=i2
-    Kind:ARRAY,size = 2
-      Kind:BASIC(int)
-  name=i3
-    Kind:ARRAY,size = 1
-      Kind:ARRAY,size = 7
-        Kind:ARRAY,size = 4
-          Kind:BASIC(int)
-  name=f1
-    Kind:ARRAY,size = 2
-      Kind:BASIC(float)
-  name=f2
-    Kind:ARRAY,size = 5
-      Kind:ARRAY,size = 3
-        Kind:BASIC(float)
-  name=f4
-    Kind:BASIC(float)
-  name=f5
-    Kind:BASIC(float)
-  name=i5
     Kind:BASIC(int)
-  name=sss
-    Kind:ARRAY,size = 2
-      Kind:STRUCTURE:S2
-      name=i1
-        Kind:BASIC(int)
-      name=i2
-        Kind:ARRAY,size = 3
-          Kind:BASIC(int)
-      name=f1
-        Kind:ARRAY,size = 2
-          Kind:BASIC(float)
+function parameters:
+  name:s
+  Kind:STRUCTURE:S1
+  name=i1
+    Kind:BASIC(int)
+  name=i2
+    Kind:BASIC(int)
   name:p2
   Kind:BASIC(int)
   name:f
   Kind:BASIC(int)
-function name:f
+function name:f2
 function return type:
   Kind:BASIC(float)
 function parameters:

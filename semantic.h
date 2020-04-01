@@ -105,6 +105,12 @@ void printError(int type,int line,char* msg);
 //检查是否有相同的名字
 void checkNoDuplicateName(struct FieldList*FL);
 
+//判断两个类型是不是一致
+int checkTypeSame(struct Type *typePtr1,struct Type *typePtr2);
+
+//判断参数列表是否符合
+int checkFieldListSame(struct FieldList*FL1,struct FieldList*FL2);
+
 void handleProgram(struct TreeNode* r);
 
 void handleExtDef(struct TreeNode* r);
@@ -139,4 +145,13 @@ struct FieldList* handleVarList(struct TreeNode* r);
 
 struct FieldList* handleParamDec(struct TreeNode* r);
 
+void handleCompst(struct TreeNode* r,struct Type * typePtr);
+
+void handleStmtList(struct TreeNode* r,struct Type * typePtr);
+
+void handleStmt(struct TreeNode* r,struct Type * typePtr);
+
+struct Type * handleExp(struct TreeNode* r);
+
+struct FieldList* handleArgs(struct TreeNode* r);
 #endif

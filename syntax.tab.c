@@ -2158,5 +2158,5 @@ void yyerror(char* msg){
 }
 
 void PrintSyntaxError(char* msg,int line){
-    printf("Error type B at Line %d: %s.\n",line,msg);
+    fprintf(stderr,"Error type B at Line %d: %s.\n",line,msg);
 }

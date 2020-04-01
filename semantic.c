@@ -35,6 +35,56 @@ unsigned hash(char *name,int sz)
     return val;
 }
 
+int checkTypeSame(struct Type *typePtr1,struct Type *typePtr2){
+    //TODO 判断类型等价
+    //先检查是否为NULL!
+    //如果有一个是NULL，说明类型错误
+    if((typePtr1 == NULL) || (typePtr2 == NULL)){
+        return 0;
+    }
+    if(typePtr1 == typePtr2){
+        //对于structure，如果指向同一个结构，那么就同类
+        //也只有structure可能相同
+        return 1;
+    }
+    if(typePtr1->kind != typePtr2->kind){
+        return 0;//类型都不同
+    }
+    else{
+        //现在同类
+        if(typePtr1->kind == BASIC){
+            return typePtr1->info.basicType == typePtr2->info.basicType;
+        }
+        else if(typePtr1->kind == ARRAY){
+            //维数相同就行
+            //递归
+            return checkTypeSame(typePtr1->info.array->elem,typePtr2->info.array->elem);
+        }
+        else{
+            //结构等价,就是每个域都等价
+            struct FieldList * FL1 = typePtr1->info.structure->structureInfo;
+            struct FieldList * FL2 = typePtr2->info.structure->structureInfo;
+            while ((FL1 != NULL)&&(FL2 != NULL))
+            {   
+                //有一个不等价就不行
+                if(checkTypeSame(FL1->type,FL2->type) == 0){
+                    return 0;
+                }
+                FL1 = FL1->next;
+                FL2 = FL2->next;
+            }
+            if((FL1 == NULL)&&(FL2 == NULL)){
+                return 1;//前面全都等价
+            }
+            else{
+                //域的数量不一致
+                return 0;
+            }
+            
+        }
+    }
+}
+
 void checkNoDuplicateName(struct FieldList*FL){
     //用一个hashSet,自己写
     int sz = 10;
@@ -50,6 +100,26 @@ void checkNoDuplicateName(struct FieldList*FL){
         FL = FL->next;
     }
     freeSet(set,sz);
+}
+
+int checkFieldListSame(struct FieldList*FL1,struct FieldList*FL2){
+    //判断两个FL是否等价，注意FL可以为NULL，说明参数列表为空
+    while ((FL1 != NULL)&&(FL2 != NULL))
+    {
+        if(checkTypeSame(FL1->type,FL2->type) == 0){
+            return 0;
+        }
+        FL1 = FL1->next;
+        FL2 = FL2->next;
+    }
+    if((FL1 == NULL)&&(FL2 == NULL)){
+        return 1;//前面全都等价
+    }
+    else{
+        //参数的数量不一致
+        return 0;
+    }
+    
 }
 
 void insertFuncTable(struct Func* func){
@@ -247,9 +317,12 @@ void handleExtDef(struct TreeNode* r){
         else{
             //函数重定义
             printError(4,r->children[0]->line,"Function redefined.");
-        }       
-        //函数体 
+        }     
+
+        //打印函数体 
         printFuncDec(funcPtr,0);
+
+        handleCompst(r->children[2],typePtr);//传入类型指针，遇到return判断返回值是否相容
     }
     else{
         //ExtDef -> Specifier Semi
@@ -431,16 +504,15 @@ struct FieldList* handleDecList(struct TreeNode* r,struct Type * typePtr,int noE
 
 struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int noExp){
     assert(r->type == Node_Dec);
+    struct FieldList* FL = (struct FieldList*)malloc(sizeof(struct FieldList));
     if(r->numChildren == 1){
         //Dec -> VarDec
         char* name = NULL;
         struct Type* typePtr2 = handleVarDec(r->children[0],typePtr,&name);
-        struct FieldList* FL = (struct FieldList*)malloc(sizeof(struct FieldList));
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
         FL->next = NULL;
         FL->line = r->children[0]->line; 
-        return FL;
     }
     else{
         if(noExp){
@@ -451,13 +523,18 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int noExp){
         //Dec -> VarDec Assign Exp
         char* name = NULL;
         struct Type* typePtr2 = handleVarDec(r->children[0],typePtr,&name);
-        struct FieldList* FL = (struct FieldList*)malloc(sizeof(struct FieldList));
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
         FL->next = NULL;
         FL->line = r->children[0]->line;
-        return FL;
     }
+    //插入变量表
+    // if((searchVariableTable(FL->name) == NULL)&&(searchStructureTable(FL->name) == NULL)){
+    //     //不存在重定义
+    //     getVarPtr(FL->type)
+    //     insertVariableTable()
+    // }
+    return FL;
 }
 
 struct Type* handleVarDec(struct TreeNode* r,struct Type * typePtr,char**namePtr){
@@ -538,4 +615,335 @@ struct FieldList* handleParamDec(struct TreeNode* r){
         insertVariableTable(varPtr);
     }
     return FL;
+}
+
+void handleCompst(struct TreeNode* r,struct Type * typePtr){
+    assert(r->type == Node_Compst);
+    //Compst -> LC DefList StmtList RC
+    struct FieldList * FL = handleDefList(r->children[1],0);//可以带初始化
+    handleStmtList(r->children[2],typePtr);//判断return语句是否正确
+}
+
+void handleStmtList(struct TreeNode* r,struct Type * typePtr){
+    assert(r->type == Node_StmtList);
+    if(r->numChildren > 0){
+        //StmtList -> Stmt StmtList
+        handleStmt(r->children[0],typePtr);
+        handleStmtList(r->children[1],typePtr);
+    }
+    //StmtList -> epsilon,don't care
+}
+
+void handleStmt(struct TreeNode* r,struct Type * typePtr){
+    assert(r->type == Node_Stmt);
+    if(r->numChildren == 1){
+        //Stmt -> Compst
+        handleCompst(r->children[0],typePtr);
+    }
+    else if(r->numChildren == 2){
+        //Stmt -> Exp Semi
+        handleExp(r->children[0]);
+    }
+    else if(r->numChildren == 3){
+        //Stmt -> Return Exp Semi
+        //判断返回值类型
+        struct Type * expTypePtr = handleExp(r->children[1]);
+        checkTypeSame(expTypePtr,typePtr);
+    }
+    else if(r->numChildren == 5){
+        if(r->children[0]->type == Node_IF){
+            //Stmt -> If LP Exp RP Stmt
+            struct Type * expTypePtr = handleExp(r->children[2]);
+            //TODO 判断exp的类型是不是INT
+
+            handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
+        }
+        else{
+            //和IF 一样的......
+            //Stmt -> while LP Exp RP Stmt
+            struct Type * expTypePtr = handleExp(r->children[2]);
+            //TODO 判断exp的类型是不是INT
+
+            handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
+        }
+    }
+    else{
+        //Stmt -> If LP Exp RP Stmt else Stmt
+        struct Type * expTypePtr = handleExp(r->children[2]);
+        //TODO 判断exp的类型是不是INT
+
+        handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
+        handleStmt(r->children[6],typePtr);//返回值留给Stmt判断
+    }
+}
+
+struct Type * handleExp(struct TreeNode* r){
+    assert(r->type == Node_Exp);
+    if(r->numChildren == 1){
+        if(r->children[0]->type == Node_ID){
+            //Exp -> ID
+            //查找变量表
+            struct Variable * varPtr = searchVariableTable(r->children[0]->idName);
+            if(varPtr == NULL){
+                //没有这个变量
+                printError(1,r->children[0]->line,"Variable Undefined.");
+                return NULL;
+            }
+            else{
+                return varPtr->varType;
+            }
+        }
+        else if(r->children[0]->type == Node_INT){
+            //Exp -> INT
+            //创建一个Type*
+            struct Type * typePtr = (struct Type *)malloc(sizeof(struct Type));
+            typePtr->kind = BASIC;
+            typePtr->info.basicType = TYPE_INT;
+            return typePtr;
+        }
+        else{
+            //Exp -> FLAOT
+            //创建一个Type*
+            struct Type * typePtr = (struct Type *)malloc(sizeof(struct Type));
+            typePtr->kind = BASIC;
+            typePtr->info.basicType = TYPE_FLOAT;
+            return typePtr;
+        }
+    }
+    else if(r->numChildren == 2){
+        if(r->children[0]->type == Node_NOT){
+            //Exp -> Not Exp
+            //判断Exp 是不是NULL或者basic类型
+            struct Type * typePtr = handleExp(r->children[1]);
+            if((typePtr == NULL) || (typePtr->kind != BASIC) ){
+                //操作数类型不匹配
+                printError(7,r->children[0]->line,"Variable(s) type mismatch.");
+                return NULL;
+            }
+            else{
+                return typePtr;//类型不变
+            }
+        }
+        else{
+            //Exp -> Neg Exp
+            //判断Exp 是不是NULL或者basic类型
+            struct Type * typePtr = handleExp(r->children[1]);
+            if((typePtr == NULL) || (typePtr->kind != BASIC) ){
+                //操作数类型不匹配
+                printError(7,r->children[0]->line,"Variable(s) type mismatch.");
+                return NULL;
+            }
+            else{
+                return typePtr;//类型不变
+            }
+        }
+    }
+    else if(r->numChildren == 3){
+        if(r->children[1]->type == Node_ASSIGNOP){
+            //Exp -> Exp Assign Exp
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            if(checkTypeSame(typePtr1,typePtr2)){
+                return typePtr1;
+            }
+            else{
+                return NULL;//不能赋值就返回NULL
+            }
+            
+        }
+        else if(r->children[1]->type == Node_AND){
+            //Exp -> Exp Assign Exp
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            //整数才能AND
+            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC) && (typePtr1->info.basicType == TYPE_INT))){
+                return typePtr1;
+            }
+            else{
+                return NULL;//不能赋值就返回NULL
+            }
+        }
+        else if(r->children[1]->type == Node_OR){
+            //Exp -> Exp Assign Exp
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            //整数才能OR
+            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC) && (typePtr1->info.basicType == TYPE_INT))){
+                return typePtr1;
+            }
+            else{
+                return NULL;//不能赋值就返回NULL
+            }
+        }
+        else if(r->children[1]->type == Node_RELOP){
+            //Exp -> Exp Assign Exp
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            //基本类型才能RELOP
+            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
+                return typePtr1;
+            }
+            else{
+                return NULL;//不能赋值就返回NULL
+            }
+        }
+        else if(r->children[1]->type == Node_PLUS){
+            //Exp -> Exp Assign Exp
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            //基本类型才能PLUS
+            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
+                return typePtr1;
+            }
+            else{
+                return NULL;//不能赋值就返回NULL
+            }
+        }
+        else if(r->children[1]->type == Node_MINUS){
+            //Exp -> Exp Assign Exp
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            //基本类型才能Minus
+            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
+                return typePtr1;
+            }
+            else{
+                return NULL;//不能赋值就返回NULL
+            }
+        }
+        else if(r->children[1]->type == Node_STAR){
+            //Exp -> Exp Assign Exp
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            //基本类型才能star
+            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
+                return typePtr1;
+            }
+            else{
+                return NULL;//不能赋值就返回NULL
+            }
+        }
+        else if(r->children[1]->type == Node_DIV){
+            //Exp -> Exp Assign Exp
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            //基本类型才能DIV
+            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
+                return typePtr1;
+            }
+            else{
+                return NULL;//不能赋值就返回NULL
+            }
+        }
+        else if(r->children[0]->type == Node_LP){
+            //Exp -> LP Exp RP
+           return handleExp(r->children[1]);
+        }
+        else if(r->children[1]->type == Node_LP){
+            //Exp -> ID LP RP
+            //函数调用
+            struct Func * funcPtr = searchFuncTable(r->children[0]->idName);
+            if(funcPtr == NULL){
+                //调用未定义的函数
+                printError(2,r->children[0]->line,"Function Undefined.");
+                return NULL;
+            }
+            else{
+                //函数定义了，判断参数是否符合
+                if(checkFieldListSame(funcPtr->params,NULL)){
+                    return funcPtr->retType;//返回的是函数返回类型
+                }
+                else{
+                    printError(9,r->children[0]->type,"Function call parameters mismatch,");
+                    return NULL;
+                }
+            }
+        }
+        else{
+            //Exp -> Exp DOT ID
+            assert(r->children[1]->type == Node_DOT);//前面太多了，assert一下
+            struct Type * expTypePtr = handleExp(r->children[0]);
+            //判断ptr是否非NULL且为Structure并且有域ID
+            if((expTypePtr != NULL)&&(expTypePtr->kind == STRUCTURE)){
+                struct FieldList * FL = expTypePtr->info.structure->structureInfo;//结构体的域
+                while ((FL != NULL) && (strcmp(FL->name,r->children[2]->idName) != 0))
+                {
+                    FL = FL -> next;
+                }
+                if(FL == NULL){
+                    //没有这个域
+                    return NULL;
+                }
+                else{
+                    return FL->type;
+                }
+            }
+            else{
+                //Exp的类型不是结构体
+                return NULL;
+            }
+        }
+    }
+    else{
+        //num == 4
+        assert(r->numChildren == 4);
+        if(r->children[0]->type == Node_ID){
+            //Exp -> ID LP Args RP
+            struct Func * funcPtr = searchFuncTable(r->children[0]->idName);
+            if(funcPtr == NULL){
+                //调用未定义的函数
+                printError(2,r->children[0]->line,"Function Undefined.");
+                return NULL;
+            }
+            else{
+                //函数定义了，判断参数是否符合
+                //先得到Args:FL,只有type重要,name不需要
+                struct FieldList* FL = handleArgs(r->children[2]);
+                if(checkFieldListSame(funcPtr->params,FL)){
+                    return funcPtr->retType;//返回的是函数返回类型
+                }
+                else{
+                    printError(9,r->children[0]->type,"Function call parameters mismatch,");
+                    return NULL;
+                }
+            }
+        }
+        else{
+            //Exp -> Exp LB Exp RB
+            assert(r->children[0]->type == Node_Exp);
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            //1应该是array,2是INT
+            if((typePtr1 != NULL)&&(typePtr1->kind==ARRAY)&&(typePtr2 != NULL)
+                &&(typePtr2->kind==BASIC)&&(typePtr2->info.basicType == TYPE_INT)){
+                    return typePtr1->info.array->elem;//返回上一层类型
+                }
+            else{
+                return NULL;
+            }
+        }
+    }
+}
+
+struct FieldList* handleArgs(struct TreeNode* r){
+    assert(r->type == Node_Args);
+    if(r->numChildren == 1){
+        //Args -> Exp
+        struct FieldList* FL = (struct FieldList*)malloc(sizeof(struct FieldList));
+        FL->name = NULL;
+        FL->type = handleExp(r->children[0]);
+        FL->line = r->children[0]->line;
+        FL->next = NULL;
+        return FL;
+    }
+    else{
+        //Args -> Exp Comma Args
+        struct FieldList* FL1 = (struct FieldList*)malloc(sizeof(struct FieldList));
+        FL1->type =  handleExp(r->children[0]);//单个
+        FL1->name = NULL;
+        FL1->line = r->children[1]->line;
+        struct FieldList* FL2 = handleArgs(r->children[2]);
+        FL1->next = FL2;
+        return FL1;//连上
+    }
 }
