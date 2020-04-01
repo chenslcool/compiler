@@ -460,7 +460,7 @@ char* handleOptTag(struct TreeNode* r){
     return name;
 }
 
-struct FieldList* handleDefList(struct TreeNode* r,int noExp){
+struct FieldList* handleDefList(struct TreeNode* r,int inStruc){
     assert(r->type == Node_DefList);
     if(r->numChildren == 0){
         //DefLst -> epsilon
@@ -468,8 +468,8 @@ struct FieldList* handleDefList(struct TreeNode* r,int noExp){
     }
     else{
         //DefLst -> Def DefList
-        struct FieldList* FL1 = handleDef(r->children[0],noExp);//数量>=1
-        struct FieldList* FL2 = handleDefList(r->children[1],noExp);//可能为空
+        struct FieldList* FL1 = handleDef(r->children[0],inStruc);//数量>=1
+        struct FieldList* FL2 = handleDefList(r->children[1],inStruc);//可能为空
         //找到FL1最后一个
         struct FieldList* tmp = FL1;
         while (tmp->next != NULL)
@@ -481,29 +481,29 @@ struct FieldList* handleDefList(struct TreeNode* r,int noExp){
     }
 }
 
-struct FieldList* handleDef(struct TreeNode* r,int noExp){
+struct FieldList* handleDef(struct TreeNode* r,int inStruc){
     assert(r->type == Node_Def);
     //Def -> Specifier DecList Semi
     struct Type * typePtr = handleSpecifier(r->children[0]);
-    return handleDecList(r->children[1],typePtr,noExp);
+    return handleDecList(r->children[1],typePtr,inStruc);
 }
 
-struct FieldList* handleDecList(struct TreeNode* r,struct Type * typePtr,int noExp){
+struct FieldList* handleDecList(struct TreeNode* r,struct Type * typePtr,int inStruc){
     assert(r->type == Node_DecList);
     if(r->numChildren == 1){
         //DecList -> Dec
-        return handleDec(r->children[0],typePtr,noExp);
+        return handleDec(r->children[0],typePtr,inStruc);
     }
     else{
         //DecList -> Dec comma Declist
-        struct FieldList* FL1 = handleDec(r->children[0],typePtr,noExp);
-        struct FieldList* FL2 = handleDecList(r->children[2],typePtr,noExp);
+        struct FieldList* FL1 = handleDec(r->children[0],typePtr,inStruc);
+        struct FieldList* FL2 = handleDecList(r->children[2],typePtr,inStruc);
         FL1->next = FL2;
         return FL1;
     }
 }
 
-struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int noExp){
+struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc){
     assert(r->type == Node_Dec);
     struct FieldList* FL = (struct FieldList*)malloc(sizeof(struct FieldList));
     if(r->numChildren == 1){
@@ -516,7 +516,7 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int noExp){
         FL->line = r->children[0]->line; 
     }
     else{
-        if(noExp){
+        if(inStruc){
             //结构体内不能初始化
             printError(15,r->children[0]->line,"Cannot initialize field in structure.");
         }
@@ -534,15 +534,17 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int noExp){
             printError(5,r->children[1]->line,"Assignop mismatch.");
         }
     }
-    //插入变量表
-    if((searchVariableTable(FL->name) == NULL)&&(searchStructureTable(FL->name) == NULL)){
-        //不存在重定义
-        struct Variable * varPtr = getVarPtr(FL,FL->line);
-        insertVariableTable(varPtr);
-    }
-    else{
-        //报错，变量重定义
-        printError(3,FL->line,"Variable redefined.");
+    //不在结构体中才插入变量表
+    if(inStruc == 0){
+        if((searchVariableTable(FL->name) == NULL)&&(searchStructureTable(FL->name) == NULL)){
+            //不存在重定义
+            struct Variable * varPtr = getVarPtr(FL,FL->line);
+            insertVariableTable(varPtr);
+        }
+        else{
+            //报错，变量重定义
+            printError(3,FL->line,"Variable redefined.");
+        }
     }
     return FL;
 }
@@ -880,7 +882,7 @@ struct Type * handleExp(struct TreeNode* r){
                     return funcPtr->retType;//返回的是函数返回类型
                 }
                 else{
-                    printError(9,r->children[0]->type,"Function call parameters mismatch,");
+                    printError(9,r->children[0]->line,"Function call parameters mismatch.");
                     return NULL;
                 }
             }
@@ -936,7 +938,7 @@ struct Type * handleExp(struct TreeNode* r){
                     return funcPtr->retType;//返回的是函数返回类型
                 }
                 else{
-                    printError(9,r->children[0]->type,"Function call parameters mismatch,");
+                    printError(9,r->children[0]->line,"Function call parameters mismatch.");
                     return NULL;
                 }
             }
