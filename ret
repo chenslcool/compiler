@@ -1,15 +1,5 @@
 ./parser ../Test/test1.cmm
-name:s
-Kind:STRUCTURE:S1
-name=a
-  Kind:BASIC(int)
-name=b
-  Kind:BASIC(int)
-name:i1
-Kind:BASIC(int)
-function name:inc
+function name:main
 function return type:
   Kind:BASIC(int)
 function parameters:
-  name:i
-  Kind:BASIC(int)
