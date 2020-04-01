@@ -424,11 +424,12 @@ struct Type* handleStructSpecifier(struct TreeNode* r){
         if((name != NULL) && ((searchStructureTable(name)!=NULL)||(searchVariableTable(name)!=NULL))){
             //结构体和之前定义的结构体或者变量重名
             printError(16,r->children[1]->line,"Structure name used before");
-            //返回什么类型呢?NULL 没有类型
-            return NULL;
+            //返回什么类型呢?NULL 没有类型,如果后面跟着一个变量呢?他就没有类型吗?
+            //所以还是要有类型的，不能直接返回NULL,这里只要报错就行了
+            // return NULL;
         }
         //name有可能是NULL，即匿名结构，就不要加入结构体表
-        struct FieldList* FL = handleDefList(r->children[3],1);
+        struct FieldList* FL = handleDefList(r->children[3],1);//struct里面的域不能初始化
         typePtr = (struct Type*)malloc(sizeof(struct Type));
         typePtr->kind = STRUCTURE;
         typePtr->info.structure = (struct Structure*)malloc(sizeof(struct Structure));
@@ -438,7 +439,7 @@ struct Type* handleStructSpecifier(struct TreeNode* r){
         if(name != NULL){
             insertStructureTable(typePtr->info.structure);
         }
-        //判断结构体内部有没有重名的域,有就报错
+        //判断结构体内部有没有重名的域,有就报错,即使报错，也不影响类型的正常返回
         checkNoDuplicateName(FL);
         return typePtr;
     }
@@ -519,21 +520,30 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int noExp){
             //结构体内不能初始化
             printError(15,r->children[0]->line,"Cannot initialize field in structure.");
         }
-        //TODO:增加Exp部分
+        //就算不能初始化，如果出现语义错误，还是要报的
         //Dec -> VarDec Assign Exp
+        struct Type* expTypePtr = handleExp(r->children[2]);
         char* name = NULL;
         struct Type* typePtr2 = handleVarDec(r->children[0],typePtr,&name);
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
         FL->next = NULL;
         FL->line = r->children[0]->line;
+        if(checkTypeSame(expTypePtr,typePtr2) == 0){
+            //赋值号两边表达式不匹配
+            printError(5,r->children[1]->line,"Assignop mismatch.");
+        }
     }
     //插入变量表
-    // if((searchVariableTable(FL->name) == NULL)&&(searchStructureTable(FL->name) == NULL)){
-    //     //不存在重定义
-    //     getVarPtr(FL->type)
-    //     insertVariableTable()
-    // }
+    if((searchVariableTable(FL->name) == NULL)&&(searchStructureTable(FL->name) == NULL)){
+        //不存在重定义
+        struct Variable * varPtr = getVarPtr(FL,FL->line);
+        insertVariableTable(varPtr);
+    }
+    else{
+        //报错，变量重定义
+        printError(3,FL->line,"Variable redefined.");
+    }
     return FL;
 }
 
@@ -642,36 +652,35 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr){
     }
     else if(r->numChildren == 2){
         //Stmt -> Exp Semi
-        handleExp(r->children[0]);
+        handleExp(r->children[0]);//这个表达式的类型也不重要了
     }
     else if(r->numChildren == 3){
         //Stmt -> Return Exp Semi
         //判断返回值类型
         struct Type * expTypePtr = handleExp(r->children[1]);
-        checkTypeSame(expTypePtr,typePtr);
+        if(checkTypeSame(expTypePtr,typePtr) == 0){
+            printError(8,r->children[0]->line,"Return type mismatch.");
+        }
     }
     else if(r->numChildren == 5){
         if(r->children[0]->type == Node_IF){
             //Stmt -> If LP Exp RP Stmt
             struct Type * expTypePtr = handleExp(r->children[2]);
-            //TODO 判断exp的类型是不是INT
-
+            //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
             handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
         }
         else{
             //和IF 一样的......
             //Stmt -> while LP Exp RP Stmt
             struct Type * expTypePtr = handleExp(r->children[2]);
-            //TODO 判断exp的类型是不是INT
-
+            //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
             handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
         }
     }
     else{
         //Stmt -> If LP Exp RP Stmt else Stmt
         struct Type * expTypePtr = handleExp(r->children[2]);
-        //TODO 判断exp的类型是不是INT
-
+        //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
         handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
         handleStmt(r->children[6],typePtr);//返回值留给Stmt判断
     }
@@ -687,7 +696,7 @@ struct Type * handleExp(struct TreeNode* r){
             if(varPtr == NULL){
                 //没有这个变量
                 printError(1,r->children[0]->line,"Variable Undefined.");
-                return NULL;
+                return NULL;//这里的NULL实在没办法忽视了，真的没有类型
             }
             else{
                 return varPtr->varType;
@@ -714,11 +723,11 @@ struct Type * handleExp(struct TreeNode* r){
         if(r->children[0]->type == Node_NOT){
             //Exp -> Not Exp
             //判断Exp 是不是NULL或者basic类型
-            struct Type * typePtr = handleExp(r->children[1]);
+            struct Type * typePtr = handleExp(r->children[1]);//有可能得到NULL
             if((typePtr == NULL) || (typePtr->kind != BASIC) ){
-                //操作数类型不匹配
+                //操作数类型不匹配,Not只能跟基本类型INT或者FLoat(我用C语言试了)
                 printError(7,r->children[0]->line,"Variable(s) type mismatch.");
-                return NULL;
+                return NULL;//这里返回????没得返回
             }
             else{
                 return typePtr;//类型不变
@@ -731,7 +740,7 @@ struct Type * handleExp(struct TreeNode* r){
             if((typePtr == NULL) || (typePtr->kind != BASIC) ){
                 //操作数类型不匹配
                 printError(7,r->children[0]->line,"Variable(s) type mismatch.");
-                return NULL;
+                return NULL;//????
             }
             else{
                 return typePtr;//类型不变
@@ -743,10 +752,13 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> Exp Assign Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
-            if(checkTypeSame(typePtr1,typePtr2)){
+            //这两个都有可能返回NULL,如果有一个NULL，说明其中一个Exp的类型不存在(出错)
+            if(checkTypeSame(typePtr1,typePtr2) == 1){//类型相同，非空
                 return typePtr1;
             }
             else{
+                //报错,赋值号类型不匹配
+                printError(5,r->children[1]->line,"Assignop mismatch.");
                 return NULL;//不能赋值就返回NULL
             }
             
@@ -755,35 +767,44 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> Exp Assign Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
-            //整数才能AND
-            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC) && (typePtr1->info.basicType == TYPE_INT))){
+            //BASIC才能AND
+            if((checkTypeSame(typePtr1,typePtr2) == 1) && ((typePtr1->kind == BASIC))){
                 return typePtr1;
             }
             else{
+                //操作数不匹配
+                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
                 return NULL;//不能赋值就返回NULL
             }
         }
         else if(r->children[1]->type == Node_OR){
-            //Exp -> Exp Assign Exp
+            //Exp -> Exp OR Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
             //整数才能OR
-            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC) && (typePtr1->info.basicType == TYPE_INT))){
-                return typePtr1;
-            }
-            else{
-                return NULL;//不能赋值就返回NULL
-            }
-        }
-        else if(r->children[1]->type == Node_RELOP){
-            //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
-            //基本类型才能RELOP
             if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
                 return typePtr1;
             }
             else{
+                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
+                return NULL;//不能赋值就返回NULL
+            }
+        }
+        else if(r->children[1]->type == Node_RELOP){
+            //Exp -> Exp ReLop Exp
+            struct Type * typePtr1 = handleExp(r->children[0]);
+            struct Type * typePtr2 = handleExp(r->children[2]);
+            //基本类型才能RELOP
+            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
+                // return typePtr1;
+                //RELOP类型是INT
+                struct Type * ptr = (struct Type *)malloc(sizeof(struct Type));
+                ptr->kind = BASIC;
+                ptr->info.basicType = TYPE_INT;
+                return ptr;//是INT类型
+            }
+            else{
+                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
                 return NULL;//不能赋值就返回NULL
             }
         }
@@ -796,6 +817,7 @@ struct Type * handleExp(struct TreeNode* r){
                 return typePtr1;
             }
             else{
+                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
                 return NULL;//不能赋值就返回NULL
             }
         }
@@ -808,6 +830,7 @@ struct Type * handleExp(struct TreeNode* r){
                 return typePtr1;
             }
             else{
+                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
                 return NULL;//不能赋值就返回NULL
             }
         }
@@ -820,10 +843,12 @@ struct Type * handleExp(struct TreeNode* r){
                 return typePtr1;
             }
             else{
+                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
                 return NULL;//不能赋值就返回NULL
             }
         }
         else if(r->children[1]->type == Node_DIV){
+            //除以零的错误???TODO
             //Exp -> Exp Assign Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
@@ -832,6 +857,7 @@ struct Type * handleExp(struct TreeNode* r){
                 return typePtr1;
             }
             else{
+                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
                 return NULL;//不能赋值就返回NULL
             }
         }
@@ -846,7 +872,7 @@ struct Type * handleExp(struct TreeNode* r){
             if(funcPtr == NULL){
                 //调用未定义的函数
                 printError(2,r->children[0]->line,"Function Undefined.");
-                return NULL;
+                return NULL;//没办法确定什么类型
             }
             else{
                 //函数定义了，判断参数是否符合
@@ -871,7 +897,8 @@ struct Type * handleExp(struct TreeNode* r){
                     FL = FL -> next;
                 }
                 if(FL == NULL){
-                    //没有这个域
+                    //没有这个域14
+                    printError(14,r->children[1]->line,"Access undefined field in structure.");
                     return NULL;
                 }
                 else{
@@ -880,6 +907,8 @@ struct Type * handleExp(struct TreeNode* r){
             }
             else{
                 //Exp的类型不是结构体
+                //对非结构体使用.操作
+                printError(13,r->children[1]->line,"Use '.' to non-Strcuture.");
                 return NULL;
             }
         }
@@ -891,8 +920,12 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> ID LP Args RP
             struct Func * funcPtr = searchFuncTable(r->children[0]->idName);
             if(funcPtr == NULL){
-                //调用未定义的函数
-                printError(2,r->children[0]->line,"Function Undefined.");
+                if(searchVariableTable(r->children[0]->idName) != NULL){
+                    //对普通变量使用()
+                    printError(11,r->children[0]->line,"Try use () to normal variable.");
+                }
+                else//调用未定义的函数
+                    printError(2,r->children[0]->line,"Function Undefined.");
                 return NULL;
             }
             else{
@@ -919,7 +952,15 @@ struct Type * handleExp(struct TreeNode* r){
                     return typePtr1->info.array->elem;//返回上一层类型
                 }
             else{
-                return NULL;
+                if(!((typePtr1 != NULL)&&(typePtr1->kind==ARRAY))){
+                    //非数组使用[]
+                    printError(10,r->children[1]->line,"Use [] to no-Array.");
+                }
+                else{
+                    //[]非整数
+                    printError(12,r->children[1]->line,"no-Interger in [].");
+                }
+                return NULL;//没办法，只能NULL
             }
         }
     }
