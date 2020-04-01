@@ -1,47 +1,16 @@
-Program (1)
-  ExtDefList (1)
-    ExtDef (1)
-      Specifier (1)
-        StructSpecifier (1)
-          STRUCT
-          OptTag (1)
-            ID: s1
-          LC
-          DefList (2)
-            Def (2)
-              Specifier (2)
-                TYPE: int
-              DecList (2)
-                Dec (2)
-                  VarDec (2)
-                    ID: i1
-              SEMI
-            DefList (3)
-              Def (3)
-                Specifier (3)
-                  TYPE: float
-                DecList (3)
-                  Dec (3)
-                    VarDec (3)
-                      ID: f1
-                SEMI
-              DefList (4)
-                Def (4)
-                  Specifier (4)
-                    TYPE: float
-                  DecList (4)
-                    Dec (4)
-                      VarDec (4)
-                        ID: f2
-                  SEMI
-                DefList (5)
-                  Def (5)
-                    Specifier (5)
-                      TYPE: int
-                    DecList (5)
-                      Dec (5)
-                        VarDec (5)
-                          ID: i2
-                    SEMI
-          RC
-      SEMI
+./parser ../Test/test1.cmm
+Kind:STRUCTURE:S
+name=i1
+  Kind:BASIC(int)
+name=i2
+  Kind:BASIC(int)
+name=i3
+  Kind:BASIC(int)
+name=i2
+  Kind:BASIC(int)
+name=i4
+  Kind:BASIC(int)
+name=i3
+  Kind:BASIC(int)
+name:a
+Kind:BASIC(int)

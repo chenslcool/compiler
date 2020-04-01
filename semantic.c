@@ -8,25 +8,42 @@ struct Structure *structureTable[TABLE_SIZE];
 struct Func *funcTable[TABLE_SIZE];
 
 void printError(int type,int line,char* msg){
-    printf("Error type %d at line %d:%s\n",type,line,msg);
+    fprintf(stderr,"Error type %d at line %d:%s\n",type,line,msg);
 }
 
-unsigned hash(char *name)
+unsigned hash(char *name,int sz)
 {
     unsigned val = 0, i;
     for (; *name; ++name)
     {
         val = (val << 2) + *name;
-        if (i = val & ~TABLE_SIZE)
-            val = (val ^ (i >> 12)) & TABLE_SIZE;
+        if (i = val & ~sz)
+            val = (val ^ (i >> 12)) & sz;
     }
     return val;
+}
+
+void checkNoDuplicateName(struct FieldList*FL){
+    //用一个hashSet,自己写
+    int sz = 10;
+    struct NameNode** set = getNameHashSet(sz);//大小自己定
+    while (FL != NULL)
+    {
+        if(nameSetContains(set,sz,FL->name)){
+            printError(15,FL->line,"Structure field redifined.");
+        }
+        else{
+            insertIntoSet(set,sz,FL->name);
+        }
+        FL = FL->next;
+    }
+    freeSet(set,sz);
 }
 
 void insertFuncTable(struct Func* func){
     assert(func != NULL);
     assert(func->name != NULL);
-    unsigned idx = hash(func->name);
+    unsigned idx = hash(func->name,TABLE_SIZE);
     struct Func* head = funcTable[idx];
     //头部插入
     func->next = head;
@@ -36,7 +53,7 @@ void insertFuncTable(struct Func* func){
 void insertStructureTable(struct Structure*structure){
     assert(structure != NULL);
     assert(structure->name != NULL);
-    unsigned idx = hash(structure->name);
+    unsigned idx = hash(structure->name,TABLE_SIZE);
     struct Structure* head = structureTable[idx];
     //头部插入
     structure->next = head;
@@ -46,7 +63,7 @@ void insertStructureTable(struct Structure*structure){
 void insertVariableTable(struct Variable*variable){
     assert(variable != NULL);
     assert(variable->name != NULL);
-    unsigned idx = hash(variable->name);
+    unsigned idx = hash(variable->name,TABLE_SIZE);
     struct Variable* head = variableTable[idx];
     //头部插入
     variable->next = head;
@@ -55,7 +72,7 @@ void insertVariableTable(struct Variable*variable){
 
 struct Func* searchFuncTable(char*name){
     assert(name != NULL);
-    unsigned idx = hash(name);
+    unsigned idx = hash(name,TABLE_SIZE);
     struct Func* head = funcTable[idx];
     while (head != NULL && (strcmp(name,head->name) != 0))
     {
@@ -66,7 +83,7 @@ struct Func* searchFuncTable(char*name){
 
 struct Structure* searchStructureTable(char*name){
     assert(name != NULL);
-    unsigned idx = hash(name);
+    unsigned idx = hash(name,TABLE_SIZE);
     struct Structure* head = structureTable[idx];
     while (head != NULL && (strcmp(name,head->name) != 0))
     {
@@ -77,7 +94,7 @@ struct Structure* searchStructureTable(char*name){
 
 struct Variable* searchVariableTable(char*name){
     assert(name != NULL);
-    unsigned idx = hash(name);
+    unsigned idx = hash(name,TABLE_SIZE);
     struct Variable* head = variableTable[idx];
     while (head != NULL && (strcmp(name,head->name) != 0))
     {
@@ -120,6 +137,48 @@ void printType(struct Type*typePtr,int nrSpace){
             default:{
                 assert(0);
             }
+        }
+    }
+    else{
+        printSpace(nrSpace);             
+        printf("Type = NULL\n");
+    }
+}
+
+struct NameNode** getNameHashSet(int sz){
+    assert(sz > 0);
+    struct NameNode** ptr = (struct NameNode**)malloc(sizeof(struct NameNode*)*sz);
+    memset(ptr,0,sizeof(struct NameNode*)*sz);
+    return ptr;
+}
+int nameSetContains(struct NameNode** set,int sz,char* name){
+    assert(name != NULL);
+    int idx = hash(name,sz);
+    struct NameNode* ptr = set[idx];
+    while ((ptr != NULL) && (strcmp(ptr->name,name)!=0))
+    {
+        ptr = ptr -> next;
+    }
+    return (ptr != NULL);
+}
+void insertIntoSet(struct NameNode** set,int sz,char*name){
+    assert(name != NULL);
+    int idx = hash(name,sz);
+    struct NameNode* ptr = (struct NameNode*)malloc(sizeof(struct NameNode));
+    //头部插入
+    ptr->name = name;
+    ptr->next = set[idx];
+    set[idx] = ptr;
+}
+void freeSet(struct NameNode** set,int sz){
+    for(int i = 0;i < sz;++i){
+        struct NameNode* ptr = set[i];
+        struct NameNode* pre = NULL;
+        while (ptr != NULL)
+        {
+            pre = ptr;
+            ptr = ptr->next;
+            free(pre);
         }
     }
 }
@@ -196,11 +255,23 @@ struct FieldList* handleExtDecList(struct TreeNode* r,struct Type* typePtr){
     if(r->numChildren == 1){
         //ExtDecList -> VarDec
         struct FieldList* FL = handleVarDec2(r->children[0],typePtr);
+        //插入变量表
+        if((searchVariableTable(FL->name) != NULL)||(searchStructureTable(FL->name) != NULL)){
+            //错误3，变量名重复定义
+            printError(3,r->children[0]->line,"Variable name used before.");
+        }
+        else{
+            //可以定义这个变量
+            struct Variable* varPtr = getVarPtr(FL,r->children[0]->line);
+            insertVariableTable(varPtr);
+        }
+        return FL;
     }
     else{
         //ExtDecList -> VarDec comma ExtDecList
-        struct FieldList* FL1 = handleVarDec2(r->children[0],typePtr);
-        struct FieldList* FL2 = handleExtDecList(r->children[2],typePtr);
+        struct FieldList* FL1 = handleVarDec2(r->children[0],typePtr);//只有一个节点
+        //即使变量重定义了，还是存在于结果FL中
+        struct FieldList* FL2 = handleExtDecList(r->children[2],typePtr);//>=0个节点
         FL1->next = FL2;
         return FL1;
     }
@@ -214,7 +285,6 @@ struct FieldList* handleVarDec2(struct TreeNode* r,struct Type * typePtr){
         FL->name = r->children[0]->idName;
         FL->next = NULL;
         FL->type = typePtr;
-        return FL;
     }
     else{
         //VarDec -> VarDec LB INT RB
@@ -228,8 +298,8 @@ struct FieldList* handleVarDec2(struct TreeNode* r,struct Type * typePtr){
         FL->next = NULL;
         FL->type = arrayPtr;
         //Attention!这里数组维度是逆序，int a[2][3]的3在Array链表头部
-        return FL;
     }
+    return FL;
 }
 
 struct Type* handleStructSpecifier(struct TreeNode* r){
@@ -240,7 +310,8 @@ struct Type* handleStructSpecifier(struct TreeNode* r){
         char* name = handleTag(r->children[1]);
         struct Structure * strucPtr = searchStructureTable(name);
         if(strucPtr == NULL){
-            //TODO报错,接着返回什么呢???NULL???
+            //TODO报错,接着返回什么呢???NULL???我返回NULL了
+            printError(17,r->children[1]->line,"Undefined structure");
         }
         else{
             //找到
@@ -248,12 +319,20 @@ struct Type* handleStructSpecifier(struct TreeNode* r){
             typePtr->kind = STRUCTURE;
             typePtr->info.structure = strucPtr;
         }
+        return typePtr;
     }
     else{
         //StructSpecifier -> Struct OptTag Lc DefList RC
         char* name = handleOptTag(r->children[1]);
+        //考虑结构体重名???
+        if((name != NULL) && ((searchStructureTable(name)!=NULL)||(searchVariableTable(name)!=NULL))){
+            //结构体和之前定义的结构体或者变量重名
+            printError(16,r->children[1]->line,"Structure name used before");
+            //返回什么类型呢?NULL 没有类型
+            return NULL;
+        }
         //name有可能是NULL，即匿名结构，就不要加入结构体表
-        struct FieldList* FL = handleDefList(r->children[3]);
+        struct FieldList* FL = handleDefList(r->children[3],1);
         typePtr = (struct Type*)malloc(sizeof(struct Type));
         typePtr->kind = STRUCTURE;
         typePtr->info.structure = (struct Structure*)malloc(sizeof(struct Structure));
@@ -263,8 +342,10 @@ struct Type* handleStructSpecifier(struct TreeNode* r){
         if(name != NULL){
             insertStructureTable(typePtr->info.structure);
         }
+        //判断结构体内部有没有重名的域,有就报错
+        checkNoDuplicateName(FL);
+        return typePtr;
     }
-    return typePtr;
 }
 
 char* handleTag(struct TreeNode* r){
@@ -282,7 +363,7 @@ char* handleOptTag(struct TreeNode* r){
     return name;
 }
 
-struct FieldList* handleDefList(struct TreeNode* r){
+struct FieldList* handleDefList(struct TreeNode* r,int isInStruc){
     assert(r->type == Node_DefList);
     if(r->numChildren == 0){
         //DefLst -> epsilon
@@ -290,8 +371,8 @@ struct FieldList* handleDefList(struct TreeNode* r){
     }
     else{
         //DefLst -> Def DefList
-        struct FieldList* FL1 = handleDef(r->children[0]);//数量>=1
-        struct FieldList* FL2 = handleDefList(r->children[1]);//可能为空
+        struct FieldList* FL1 = handleDef(r->children[0],isInStruc);//数量>=1
+        struct FieldList* FL2 = handleDefList(r->children[1],isInStruc);//可能为空
         //找到FL1最后一个
         struct FieldList* tmp = FL1;
         while (tmp->next != NULL)
@@ -303,29 +384,29 @@ struct FieldList* handleDefList(struct TreeNode* r){
     }
 }
 
-struct FieldList* handleDef(struct TreeNode* r){
+struct FieldList* handleDef(struct TreeNode* r,int isInStruc){
     assert(r->type == Node_Def);
     //Def -> Specifier DecList Semi
     struct Type * typePtr = handleSpecifier(r->children[0]);
-    return handleDecList(r->children[1],typePtr);
+    return handleDecList(r->children[1],typePtr,isInStruc);
 }
 
-struct FieldList* handleDecList(struct TreeNode* r,struct Type * typePtr){
+struct FieldList* handleDecList(struct TreeNode* r,struct Type * typePtr,int isInStruc){
     assert(r->type == Node_DecList);
     if(r->numChildren == 1){
         //DecList -> Dec
-        return handleDec(r->children[0],typePtr);
+        return handleDec(r->children[0],typePtr,isInStruc);
     }
     else{
         //DecList -> Dec comma Declist
-        struct FieldList* FL1 = handleDec(r->children[0],typePtr);
-        struct FieldList* FL2 = handleDecList(r->children[2],typePtr);
+        struct FieldList* FL1 = handleDec(r->children[0],typePtr,isInStruc);
+        struct FieldList* FL2 = handleDecList(r->children[2],typePtr,isInStruc);
         FL1->next = FL2;
         return FL1;
     }
 }
 
-struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr){
+struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int isInStruc){
     assert(r->type == Node_Dec);
     if(r->numChildren == 1){
         //Dec -> VarDec
@@ -335,9 +416,14 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr){
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
         FL->next = NULL;
+        FL->line = r->children[0]->line;
         return FL;
     }
     else{
+        if(isInStruc){
+            //结构体内不能初始化
+            printError(15,r->children[0]->line,"Cannot initialize field in structure.");
+        }
         //TODO:增加Exp部分
         //Dec -> VarDec Assign Exp
         char* name = NULL;
@@ -346,6 +432,7 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr){
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
         FL->next = NULL;
+        FL->line = r->children[0]->line;
         return FL;
     }
 }
@@ -368,4 +455,12 @@ struct Type* handleVarDec(struct TreeNode* r,struct Type * typePtr,char**namePtr
         //Attention!这里数组维度是逆序，int a[2][3]的3在Array链表头部
         return arrayPtr;
     }
+}
+
+struct Variable* getVarPtr(struct FieldList*FL1,int line){
+    struct Variable* varPtr = (struct Variable*)malloc(sizeof(struct Variable));
+    varPtr->name = FL1->name;
+    varPtr->firstAppearanceLine = line;
+    varPtr->varType = FL1->type;
+    varPtr->next = NULL;
 }

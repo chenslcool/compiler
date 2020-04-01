@@ -25,6 +25,7 @@ struct Type
 struct FieldList
 {
     char* name;//结构体成员名字，如果是函数形参就无所谓
+    int line;//第一次出现的行
     struct Type* type;//类型
     struct FieldList* next;//链表指针
 };
@@ -62,6 +63,17 @@ struct Structure
     struct Structure* next;//这个next指针只在结构体表项中有用
 };
 
+//用于判断FL*中是否有重复名字的hashset表项
+struct NameNode
+{
+    char* name;
+    struct NameNode*next;
+};
+
+struct NameNode** getNameHashSet(int sz);
+int nameSetContains(struct NameNode** set,int sz,char* name);
+void insertIntoSet(struct NameNode** set,int sz,char*name);
+void freeSet(struct NameNode** set,int sz);
 
 //根据name查表
 struct Func* searchFuncTable(char*name);
@@ -73,13 +85,19 @@ void insertFuncTable(struct Func* func);
 void insertStructureTable(struct Structure*structure);
 void insertVariableTable(struct Variable*variable);
 
+//根据一个只有一个节点的创建出一个变量符号，用于插入变量表
+struct Variable* getVarPtr(struct FieldList*FL,int line);
+
 //打印类型信息，便于调试
 void printType(struct Type*,int nrSpace);
 
 //根据name取得哈希值，得到table表项地址
-unsigned hash(char*name);
+unsigned hash(char*name,int sz);
 
 void printError(int type,int line,char* msg);
+
+//检查是否有相同的名字
+void checkNoDuplicateName(struct FieldList*FL);
 
 void handleProgram(struct TreeNode* r);
 
@@ -97,13 +115,13 @@ char* handleTag(struct TreeNode* r);
 
 char* handleOptTag(struct TreeNode* r);
 
-struct FieldList* handleDefList(struct TreeNode* r);
+struct FieldList* handleDefList(struct TreeNode* r,int isInStruc);
 
-struct FieldList* handleDef(struct TreeNode* r);
+struct FieldList* handleDef(struct TreeNode* r,int isInStruc);
 
-struct FieldList* handleDecList(struct TreeNode* r,struct Type * typtPtr);
+struct FieldList* handleDecList(struct TreeNode* r,struct Type * typtPtr,int isInStruc);
 
-struct FieldList* handleDec(struct TreeNode* r,struct Type * typtPtr);
+struct FieldList* handleDec(struct TreeNode* r,struct Type * typtPtr,int isInStruc);
 
 struct Type* handleVarDec(struct TreeNode* r,struct Type * typtPtr,char**namePtr);
 

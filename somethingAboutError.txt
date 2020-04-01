@@ -1,0 +1,9 @@
+1. 错误3，变量名重复定义(结构体名或变量名已存在)
+    (1) 全局变量:不会更新变量表，但是变量还作为FL*返回，其实并没有影响，但是以后通过变量表无法访问到它.(handleExtDecList中)
+2. 错误17:使用未定义过的结构体
+    返回的Type*为NULL，即无类型(handleStructSpecifier)
+3. 错误16. 结构体和之前定义的结构体或者变量重名
+    返回的Type*为NULL，即无类型(handleStructSpecifier)
+4. 错误15.
+    (1) 结构体域重定义。重定义的话，重名的域还在结构体中，只是报错。checkNoDuplicateName
+    (2) 数组域初始化。如果初始化，这个field还在结构体中(handleDec)
