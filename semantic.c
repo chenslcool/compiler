@@ -773,6 +773,10 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> Exp Assign Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
+            if((typePtr1 == NULL)||(typePtr2 == NULL)){
+                //如果有一个是NULL,说明之前已经错了，这里就不报错了
+                return NULL;
+            }
             //BASIC才能AND
             if((checkTypeSame(typePtr1,typePtr2) == 1) && ((typePtr1->kind == BASIC))){
                 return typePtr1;
@@ -787,6 +791,10 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> Exp OR Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
+            if((typePtr1 == NULL)||(typePtr2 == NULL)){
+                //如果有一个是NULL,说明之前已经错了，这里就不报错了
+                return NULL;
+            }
             //整数才能OR
             if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
                 return typePtr1;
@@ -800,6 +808,10 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> Exp ReLop Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
+            if((typePtr1 == NULL)||(typePtr2 == NULL)){
+                //如果有一个是NULL,说明之前已经错了，这里就不报错了
+                return NULL;
+            }
             //基本类型才能RELOP
             if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
                 // return typePtr1;
@@ -818,6 +830,10 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> Exp Assign Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
+            if((typePtr1 == NULL)||(typePtr2 == NULL)){
+                //如果有一个是NULL,说明之前已经错了，这里就不报错了
+                return NULL;
+            }
             //基本类型才能PLUS
             if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
                 return typePtr1;
@@ -831,6 +847,10 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> Exp Assign Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
+            if((typePtr1 == NULL)||(typePtr2 == NULL)){
+                //如果有一个是NULL,说明之前已经错了，这里就不报错了
+                return NULL;
+            }
             //基本类型才能Minus
             if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
                 return typePtr1;
@@ -844,6 +864,10 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> Exp Assign Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
+            if((typePtr1 == NULL)||(typePtr2 == NULL)){
+                //如果有一个是NULL,说明之前已经错了，这里就不报错了
+                return NULL;
+            }
             //基本类型才能star
             if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
                 return typePtr1;
@@ -858,6 +882,10 @@ struct Type * handleExp(struct TreeNode* r){
             //Exp -> Exp Assign Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
+            if((typePtr1 == NULL)||(typePtr2 == NULL)){
+                //如果有一个是NULL,说明之前已经错了，这里就不报错了
+                return NULL;
+            }
             //基本类型才能DIV
             if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
                 return typePtr1;
@@ -896,6 +924,10 @@ struct Type * handleExp(struct TreeNode* r){
             assert(r->children[1]->type == Node_DOT);//前面太多了，assert一下
             struct Type * expTypePtr = handleExp(r->children[0]);
             //判断ptr是否非NULL且为Structure并且有域ID
+            if(expTypePtr == NULL){
+                //如果是NULL,说明递归exp已经错了，这里就不报错了
+                return NULL;
+            }
             if((expTypePtr != NULL)&&(expTypePtr->kind == STRUCTURE)){
                 struct FieldList * FL = expTypePtr->info.structure->structureInfo;//结构体的域
                 while ((FL != NULL) && (strcmp(FL->name,r->children[2]->idName) != 0))
