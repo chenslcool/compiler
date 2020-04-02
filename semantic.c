@@ -304,7 +304,7 @@ void handleExtDef(struct TreeNode* r){
     if((r->numChildren == 3) && (r->children[2]->type == Node_SEMI)){
         //ExtDef -> Specifier ExtDecList SEMI
         struct FieldList * FL = handleExtDecList(r->children[1],typePtr);//传入类型，在内部创建变量
-        printFieldList(FL,0);
+        // printFieldList(FL,0);
     }
     else if((r->numChildren == 3) && (r->children[2]->type == Node_Compst)){
         //ExtDef -> Specifier FunDec Compst
@@ -320,13 +320,13 @@ void handleExtDef(struct TreeNode* r){
         }     
 
         //打印函数体 
-        printFuncDec(funcPtr,0);
+        // printFuncDec(funcPtr,0);
 
         handleCompst(r->children[2],typePtr);//传入类型指针，遇到return判断返回值是否相容
     }
     else{
         //ExtDef -> Specifier Semi
-        printType(typePtr,0);
+        // printType(typePtr,0);
     }
 }
 
@@ -755,6 +755,10 @@ struct Type * handleExp(struct TreeNode* r){
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
             //这两个都有可能返回NULL,如果有一个NULL，说明其中一个Exp的类型不存在(出错)
+            if((typePtr1 == NULL)||(typePtr2 == NULL)){
+                //如果有一个是NULL,说明之前已经错了，这里就不报错了
+                return NULL;
+            }
             if(checkTypeSame(typePtr1,typePtr2) == 1){//类型相同，非空
                 return typePtr1;
             }
@@ -957,12 +961,14 @@ struct Type * handleExp(struct TreeNode* r){
                 if(!((typePtr1 != NULL)&&(typePtr1->kind==ARRAY))){
                     //非数组使用[]
                     printError(10,r->children[1]->line,"Use [] to no-Array.");
+                    return NULL;
                 }
                 else{
-                    //[]非整数
+                    //[]非整数,也只是内部出错，还是返回子类型,不影响后续分析
                     printError(12,r->children[1]->line,"no-Interger in [].");
+                    return typePtr1->info.array->elem;
                 }
-                return NULL;//没办法，只能NULL
+                // return NULL;//没办法，只能NULL
             }
         }
     }
