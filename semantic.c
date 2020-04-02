@@ -751,6 +751,17 @@ struct Type * handleExp(struct TreeNode* r){
     }
     else if(r->numChildren == 3){
         if(r->children[1]->type == Node_ASSIGNOP){
+            //赋值号左边只能是左值，仅从语法上检查,Exp只能是ID | Exp LB EXP RB | Exp Dot ID
+            if(((r->children[0]->numChildren == 1) && (r->children[0]->children[0]->type == Node_ID))
+                ||((r->children[0]->numChildren == 4) && (r->children[0]->children[1]->type == Node_LB))
+                ||((r->children[0]->numChildren == 3) && (r->children[0]->children[1]->type == Node_DOT))){
+                    //什么都不做(^-^)
+                }
+            else{
+                printError(6,r->children[1]->line,"The left-hand side of an assignment must be a variable.");
+                //报错之后，还要分析吗?????
+                //暂时继续分析吧TODO may FIX it
+            }
             //Exp -> Exp Assign Exp
             struct Type * typePtr1 = handleExp(r->children[0]);
             struct Type * typePtr2 = handleExp(r->children[2]);
