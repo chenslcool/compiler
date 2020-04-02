@@ -8,7 +8,7 @@ struct Structure *structureTable[TABLE_SIZE];
 struct Func *funcTable[TABLE_SIZE];
 
 void printError(int type,int line,char* msg){
-    fprintf(stderr,"Error type %d at line %d:%s\n",type,line,msg);
+    printf("Error Type %d at Line %d: %s\n",type,line,msg);
 }
 
 void printFuncDec(struct Func* funcPtr,int nrSpace){
@@ -25,14 +25,20 @@ void printFuncDec(struct Func* funcPtr,int nrSpace){
 
 unsigned hash(char *name,int sz)
 {
-    unsigned val = 0, i;
+    // unsigned val = 0, i;
+    // for (; *name; ++name)
+    // {
+    //     val = (val << 2) + *name;
+    //     if (i = val & ~sz)
+    //         val = (val ^ (i >> 12)) & sz;
+    // }
+    // return val;
+    unsigned val = 0;
     for (; *name; ++name)
     {
-        val = (val << 2) + *name;
-        if (i = val & ~sz)
-            val = (val ^ (i >> 12)) & sz;
+        val += *name;
     }
-    return val;
+    return val%sz;
 }
 
 int checkTypeSame(struct Type *typePtr1,struct Type *typePtr2){
@@ -660,7 +666,8 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr){
         //Stmt -> Return Exp Semi
         //判断返回值类型
         struct Type * expTypePtr = handleExp(r->children[1]);
-        if(checkTypeSame(expTypePtr,typePtr) == 0){
+        //如果Exp返回类型为NULL,说明Exp里面已经报错，不用再报
+        if((expTypePtr != NULL)&&checkTypeSame(expTypePtr,typePtr) == 0){
             printError(8,r->children[0]->line,"Return type mismatch.");
         }
     }
@@ -915,9 +922,13 @@ struct Type * handleExp(struct TreeNode* r){
             //函数调用
             struct Func * funcPtr = searchFuncTable(r->children[0]->idName);
             if(funcPtr == NULL){
-                //调用未定义的函数
-                printError(2,r->children[0]->line,"Function Undefined.");
-                return NULL;//没办法确定什么类型
+                if(searchVariableTable(r->children[0]->idName) != NULL){
+                    //对普通变量使用()
+                    printError(11,r->children[0]->line,"Try use () to normal variable.");
+                }
+                else//调用未定义的函数
+                    printError(2,r->children[0]->line,"Function Undefined.");
+                return NULL;
             }
             else{
                 //函数定义了，判断参数是否符合
