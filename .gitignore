@@ -1,0 +1,6 @@
+*.sh
+*.o
+syntax.output
+syntax.tab*
+parser
+lex.yy.c
