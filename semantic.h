@@ -3,7 +3,7 @@
 #include "tree.h"
 //哈希表大小
 #define TABLE_SIZE 100
-
+extern int numHashSearch;
 
 //类型定义:基本类型、数组类型、结构体
 struct Type
