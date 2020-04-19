@@ -8,6 +8,40 @@ struct Variable *variableTable[TABLE_SIZE];
 struct Structure *structureTable[TABLE_SIZE];
 struct Func *funcTable[TABLE_SIZE];
 
+void reverseArray(struct Type * arrayTypePtr){
+    assert(arrayTypePtr->kind == ARRAY);
+    //先计算总维数
+    int numDim = 0;
+    struct Type * curType = arrayTypePtr;
+    while (curType->kind == ARRAY)
+    {
+        numDim++;
+        curType = curType->info.array->elem;
+    }
+    if(numDim == 1){ // 一维数组
+        return;
+    }
+    //高维
+    int* dimSizes = (int*)malloc(sizeof(int)*numDim);
+    int curDim = 0;
+    curType = arrayTypePtr;
+    while (curType->kind == ARRAY)
+    {
+        dimSizes[curDim] = curType->info.array->size;
+        curDim++;
+        curType = curType->info.array->elem;
+    }
+    curDim = numDim - 1;
+    curType = arrayTypePtr;
+    while (curType->kind == ARRAY)
+    {
+        curType->info.array->size = dimSizes[curDim];
+        --curDim;
+        curType = curType->info.array->elem;
+    }
+    free(dimSizes);//释放空间
+}
+
 void printError(int type,int line,char* msg){
     printf("Error Type %d at Line %d: %s\n",type,line,msg);
 }
@@ -342,7 +376,7 @@ void handleExtDef(struct TreeNode* r){
     if((r->numChildren == 3) && (r->children[2]->type == Node_SEMI)){
         //ExtDef -> Specifier ExtDecList SEMI
         struct FieldList * FL = handleExtDecList(r->children[1],typePtr);//传入类型，在内部创建变量
-        // printFieldList(FL,0);
+        printFieldList(FL,0);
     }
     else if((r->numChildren == 3) && (r->children[2]->type == Node_Compst)){
         //ExtDef -> Specifier FunDec Compst
@@ -389,6 +423,11 @@ struct FieldList* handleExtDecList(struct TreeNode* r,struct Type* typePtr){
     if(r->numChildren == 1){
         //ExtDecList -> VarDec
         struct FieldList* FL = handleVarDec2(r->children[0],typePtr);
+
+        //反转数组
+        if(FL->type->kind == ARRAY)
+            reverseArray(FL->type);
+
         //插入变量表
         if((searchVariableTable(FL->name) != NULL)||(searchStructureTable(FL->name) != NULL)){
             //错误3，变量名重复定义
@@ -404,6 +443,11 @@ struct FieldList* handleExtDecList(struct TreeNode* r,struct Type* typePtr){
     else{
         //ExtDecList -> VarDec comma ExtDecList
         struct FieldList* FL1 = handleVarDec2(r->children[0],typePtr);//只有一个节点
+
+        //反转数组
+        if(FL1->type->kind == ARRAY)
+            reverseArray(FL1->type);
+
         //即使变量重定义了，还是存在于结果FL中
         struct FieldList* FL2 = handleExtDecList(r->children[2],typePtr);//>=0个节点
         FL1->next = FL2;
@@ -548,6 +592,11 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc
         //Dec -> VarDec
         char* name = NULL;
         struct Type* typePtr2 = handleVarDec(r->children[0],typePtr,&name);
+
+        //反转数组
+        if(typePtr2->kind == ARRAY)
+            reverseArray(typePtr2);
+
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
         FL->next = NULL;
@@ -563,6 +612,11 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc
         struct Type* expTypePtr = handleExp(r->children[2]);
         char* name = NULL;
         struct Type* typePtr2 = handleVarDec(r->children[0],typePtr,&name);
+
+        //反转数组
+        if(typePtr2->kind == ARRAY)
+            reverseArray(typePtr2);
+
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
         FL->next = NULL;
@@ -653,6 +707,11 @@ struct FieldList* handleParamDec(struct TreeNode* r){
     struct Type* typePtr = handleSpecifier(r->children[0]);
     struct FieldList *FL = (struct FieldList *)malloc(sizeof(struct FieldList));
     FL->type = handleVarDec(r->children[1],typePtr,&(FL->name));
+
+    //反转数组
+    if(FL->type->kind == ARRAY)
+        reverseArray(FL->type);
+
     FL->line = r->children[1]->line;
     FL->next = NULL;
     //检查重名参数，注意全局作用域

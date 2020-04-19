@@ -111,6 +111,9 @@ int checkTypeSame(struct Type *typePtr1,struct Type *typePtr2);
 //判断参数列表是否符合
 int checkFieldListSame(struct FieldList*FL1,struct FieldList*FL2);
 
+//反转数组
+void reverseArray(struct Type * arrayType);
+
 void handleProgram(struct TreeNode* r);
 
 void handleExtDef(struct TreeNode* r);
