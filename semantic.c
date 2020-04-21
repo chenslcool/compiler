@@ -9,6 +9,7 @@ struct Structure *structureTable[TABLE_SIZE];
 struct Func *funcTable[TABLE_SIZE];
 
 int calculateWidth(struct Type* typePtr){
+    assert(typePtr != NULL);
     //不用到width属性
     int sumWidth = 0;
     switch (typePtr->kind)
@@ -39,20 +40,23 @@ int calculateWidth(struct Type* typePtr){
 }
 
 void reverseArray(struct Type * arrayTypePtr){
+    assert(arrayTypePtr != NULL);
     assert(arrayTypePtr->kind == ARRAY);
     //先计算总维数
     int numDim = 0;
     struct Type * curType = arrayTypePtr;
-    while (curType->kind == ARRAY)
+    while ((curType != NULL) && (curType->kind == ARRAY))
     {
         numDim++;
         curType = curType->info.array->elem;
     }
+    assert(curType != NULL);
+    int baseWidth = calculateWidth(curType);//基类型宽度
     if(numDim == 1){ // 一维数组
+        arrayTypePtr->info.array->elemWidth = baseWidth;
         return;
     }
     //高维
-    int baseWidth = calculateWidth(curType);//基类型宽度
     int* dimSizes = (int*)malloc(sizeof(int)*numDim);
     int* dimWidths = (int*)malloc(sizeof(int)*numDim);
     int curDim = numDim - 1;
@@ -66,9 +70,9 @@ void reverseArray(struct Type * arrayTypePtr){
 
     assert(curDim == -1);
 
-    dimWidths[0] = baseWidth;
-    for(int i = 1;i < numDim;++i){
-        dimWidths[i] = dimSizes[i - 1] * dimWidths[i - 1];
+    dimWidths[numDim - 1] = baseWidth;
+    for(int i = numDim - 2;i >= 0;--i){
+        dimWidths[i] = dimSizes[i + 1] * dimWidths[i + 1];
     }
     
     curDim = 0;
@@ -76,6 +80,7 @@ void reverseArray(struct Type * arrayTypePtr){
     while (curType->kind == ARRAY)
     {
         curType->info.array->numElem = dimSizes[curDim];
+        curType->info.array->elemWidth = dimWidths[curDim];
         ++curDim;
         curType = curType->info.array->elem;
     }
@@ -316,7 +321,7 @@ void printType(struct Type*typePtr,int nrSpace){
             }break;
             case ARRAY:{
                 printSpace(nrSpace);
-                printf("Kind:ARRAY,size = %d\n",typePtr->info.array->numElem);
+                printf("Kind:ARRAY, numElem = %d, elemWidth = %d\n", typePtr->info.array->numElem, typePtr->info.array->elemWidth);
                 printType(typePtr->info.array->elem,nrSpace+2);
             }break;
             case STRUCTURE:{
@@ -419,7 +424,7 @@ void handleExtDef(struct TreeNode* r){
     if((r->numChildren == 3) && (r->children[2]->type == Node_SEMI)){
         //ExtDef -> Specifier ExtDecList SEMI
         struct FieldList * FL = handleExtDecList(r->children[1],typePtr);//传入类型，在内部创建变量
-        // printFieldList(FL,0);
+        printFieldList(FL,0);
     }
     else if((r->numChildren == 3) && (r->children[2]->type == Node_Compst)){
         //ExtDef -> Specifier FunDec Compst
