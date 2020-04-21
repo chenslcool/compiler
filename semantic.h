@@ -93,7 +93,13 @@ struct Operand
         int laeblNo;
         char* funcName;
         char* varName;
-        int tmpVarNo;//临时变量ID或者临时变量地址
+        int tmpVarNo;//临时变量ID
+        struct 
+        {
+            int tmpVarNoAddr;//偏移量
+            char* varName;//地址一定是相对于某个普通变量(数组)的，记录数组名字,可以得到base
+        }address;
+        
         int constantVal;
     }info;
 };
@@ -217,7 +223,7 @@ void handleStmtList(struct TreeNode* r,struct Type * typePtr);
 
 void handleStmt(struct TreeNode* r,struct Type * typePtr);
 
-struct Type * handleExp(struct TreeNode* r);
+struct Type * handleExp(struct TreeNode* r, struct Operand* place);
 
 struct FieldList* handleArgs(struct TreeNode* r);
 
@@ -226,12 +232,18 @@ void appendInterCodeToList(struct InterCode* ICNodePtr);
 //创建一个ICNode并且分配
 struct InterCode* newICNode(int numOperands);
 
+//创建一个Oprand
+struct Operand*  newOperand();
+
 //获取新的跳转标号
-int getNewLabel();
+struct Operand* getNewLabel();
 
 //获取新的临时变量
-int getNewTmpVar();
+struct Operand* getNewTmpVar();
 
 //打印中间代码
 void printInterCodeList(FILE* fd);
+
+//根据操作数类型打印，不输出多余空白
+void printOperand(FILE* fd, struct Operand* op);
 #endif

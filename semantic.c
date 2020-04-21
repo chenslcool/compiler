@@ -678,6 +678,7 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc
             printf("Cannot translate: Code contains Variables or parameter of structure type.\n");
         }
         else if(typePtr2->kind == ARRAY){
+            //数组只能以这种不带初始化的方式创建，因为数组不能赋值
             int spaceNeeded = calculateWidth(typePtr2);
             struct InterCode * ICPtr = newICNode(1);
             ICPtr->kind = IC_DEC;
@@ -699,7 +700,6 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc
         }
         //就算不能初始化，如果出现语义错误，还是要报的
         //Dec -> VarDec Assign Exp
-        struct Type* expTypePtr = handleExp(r->children[2]);
         char* name = NULL;
         struct Type* typePtr2 = handleVarDec(r->children[0],typePtr,&name);
 
@@ -712,15 +712,30 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc
             printf("Cannot translate: Code contains Variables or parameter of structure type.\n");
         }
         else if(typePtr2->kind == ARRAY){
-            int spaceNeeded = calculateWidth(typePtr2);
-            struct InterCode * ICPtr = newICNode(1);
-            ICPtr->kind = IC_DEC;
-            ICPtr->allocSize = spaceNeeded;
-            ICPtr->operands[0]->kind = OPEARND_VAR;
-            ICPtr->operands[0]->info.varName = name;
-            appendInterCodeToList(ICPtr);
-            //TODO 还有赋值Exp解析部分 
+            //这种情况不会发生，因为数组无法初始化
+            // int spaceNeeded = calculateWidth(typePtr2);
+            // struct InterCode * ICPtr = newICNode(1);
+            // ICPtr->kind = IC_DEC;
+            // ICPtr->allocSize = spaceNeeded;
+            // ICPtr->operands[0]->kind = OPEARND_VAR;
+            // ICPtr->operands[0]->info.varName = name;
+            // appendInterCodeToList(ICPtr);
+            assert(0);
         }
+
+        //后面有赋值，只能是基本类型的初始化，要生成相应中间代码
+        //先创建一个临时变量ti
+        struct Operand* tmp = getNewTmpVar();
+        //用Exp处理将tmp临时变量赋值，生成相应中间码
+        struct Type* expTypePtr = handleExp(r->children[2],tmp);
+        assert(tmp->kind == OPEARND_TMP_VAR);
+        struct InterCode * ICPtr = newICNode(1);//但是我需要2个，第二个自己初始化
+        ICPtr->numOperands = 2;
+        ICPtr->operands[1] = tmp;
+        ICPtr->operands[0]->kind = OPEARND_VAR;
+        ICPtr->operands[0]->info.varName = name;//name 不会是 NULL
+        ICPtr->kind = IC_ASSIGN;
+        appendInterCodeToList(ICPtr);
 
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
@@ -856,12 +871,12 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr){
     }
     else if(r->numChildren == 2){
         //Stmt -> Exp Semi
-        handleExp(r->children[0]);//这个表达式的类型也不重要了
+        handleExp((r->children[0]), NULL);//这个表达式的类型也不重要了
     }
     else if(r->numChildren == 3){
         //Stmt -> Return Exp Semi
         //判断返回值类型
-        struct Type * expTypePtr = handleExp(r->children[1]);
+        struct Type * expTypePtr = handleExp((r->children[1]), NULL);
         //如果Exp返回类型为NULL,说明Exp里面已经报错，不用再报
         if((expTypePtr != NULL)&&checkTypeSame(expTypePtr,typePtr) == 0){
             printError(8,r->children[0]->line,"Return type mismatch.");
@@ -870,28 +885,28 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr){
     else if(r->numChildren == 5){
         if(r->children[0]->type == Node_IF){
             //Stmt -> If LP Exp RP Stmt
-            struct Type * expTypePtr = handleExp(r->children[2]);
+            struct Type * expTypePtr = handleExp((r->children[2]), NULL);
             //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
             handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
         }
         else{
             //和IF 一样的......
             //Stmt -> while LP Exp RP Stmt
-            struct Type * expTypePtr = handleExp(r->children[2]);
+            struct Type * expTypePtr = handleExp((r->children[2]), NULL);
             //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
             handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
         }
     }
     else{
         //Stmt -> If LP Exp RP Stmt else Stmt
-        struct Type * expTypePtr = handleExp(r->children[2]);
+        struct Type * expTypePtr = handleExp((r->children[2]), NULL);
         //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
         handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
         handleStmt(r->children[6],typePtr);//返回值留给Stmt判断
     }
 }
 
-struct Type * handleExp(struct TreeNode* r){
+struct Type * handleExp(struct TreeNode* r, struct Operand* place){
     assert(r->type == Node_Exp);
     if(r->numChildren == 1){
         if(r->children[0]->type == Node_ID){
@@ -904,6 +919,38 @@ struct Type * handleExp(struct TreeNode* r){
                 return NULL;//这里的NULL实在没办法忽视了，真的没有类型
             }
             else{
+                if(place != NULL){
+                    //ID可能是基本类型或者基本类型数组(不会出现结构)
+                    //place的名字已经确定了
+                    if(varPtr->varType->kind == BASIC){
+                        //生成一条赋值的中间代码
+                        struct InterCode * ICPtr = newICNode(-1);
+                        ICPtr->kind = IC_ASSIGN;//基本的赋值
+                        struct Operand* opPtr1 = newOperand();
+                        opPtr1->kind = OPEARND_VAR;
+                        opPtr1->info.varName = varPtr->name;
+                        place->kind = OPEARND_TMP_VAR;
+                        ICPtr->operands[0] = place;
+                        ICPtr->operands[1] = opPtr1;
+                        ICPtr->numOperands = 2;
+                        appendInterCodeToList(ICPtr);
+                    }
+                    else if(varPtr->varType->kind == ARRAY){
+                        //TODO 数组的话，ID应该已经在中间代码DEC过了。
+                        //记录偏移量和base
+                        struct InterCode * ICPtr = newICNode(-1);
+                        ICPtr->kind = IC_ASSIGN;//x := 0，最后一步才是加上&base和加上偏移量
+                        struct Operand* opPtr1 = newOperand();
+                        opPtr1->kind = OPEARND_CONSTANT;
+                        opPtr1->info.constantVal = 0;
+                        place->kind = OPEARND_TMP_VAR;//也只是一个普通的临时变量记录偏移量而已
+                        ICPtr->operands[0] = place;
+                        ICPtr->operands[1] = opPtr1;
+                        ICPtr->numOperands = 2;
+                        //目前place->info.address.vartmpno只是偏移量
+                        appendInterCodeToList(ICPtr);
+                    }
+                }
                 return varPtr->varType;
             }
         }
@@ -913,6 +960,22 @@ struct Type * handleExp(struct TreeNode* r){
             struct Type * typePtr = (struct Type *)malloc(sizeof(struct Type));
             typePtr->kind = BASIC;
             typePtr->info.basicType = TYPE_INT;
+
+            if(place != NULL){
+                //place的名字已经确定了
+                //生成一条赋值的中间代码
+                struct InterCode * ICPtr = newICNode(-1);
+                ICPtr->kind = IC_ASSIGN;//基本的赋值
+                struct Operand* opPtr1 = newOperand();
+                opPtr1->kind = OPEARND_CONSTANT;
+                opPtr1->info.constantVal = r->children[0]->val.intVal;
+                place->kind = OPEARND_TMP_VAR;
+                ICPtr->operands[0] = place;
+                ICPtr->operands[1] = opPtr1;
+                ICPtr->numOperands = 2;
+                appendInterCodeToList(ICPtr);
+            }
+
             return typePtr;
         }
         else{
@@ -928,7 +991,7 @@ struct Type * handleExp(struct TreeNode* r){
         if(r->children[0]->type == Node_NOT){
             //Exp -> Not Exp
             //判断Exp 是不是NULL或者basic类型
-            struct Type * typePtr = handleExp(r->children[1]);//有可能得到NULL
+            struct Type * typePtr = handleExp((r->children[1]), NULL);//有可能得到NULL
             if((typePtr == NULL) || (typePtr->kind != BASIC) ){
                 //操作数类型不匹配,Not只能跟基本类型INT或者FLoat(我用C语言试了)
                 printError(7,r->children[0]->line,"Variable(s) type mismatch.");
@@ -941,7 +1004,7 @@ struct Type * handleExp(struct TreeNode* r){
         else{
             //Exp -> Neg Exp
             //判断Exp 是不是NULL或者basic类型
-            struct Type * typePtr = handleExp(r->children[1]);
+            struct Type * typePtr = handleExp((r->children[1]), NULL);
             if((typePtr == NULL) || (typePtr->kind != BASIC) ){
                 //操作数类型不匹配
                 printError(7,r->children[0]->line,"Variable(s) type mismatch.");
@@ -966,8 +1029,8 @@ struct Type * handleExp(struct TreeNode* r){
                 //暂时继续分析吧TODO may FIX it
             }
             //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
+            struct Type * typePtr1 = handleExp((r->children[0]), NULL);
+            struct Type * typePtr2 = handleExp((r->children[2]), NULL);
             //这两个都有可能返回NULL,如果有一个NULL，说明其中一个Exp的类型不存在(出错)
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
@@ -985,8 +1048,8 @@ struct Type * handleExp(struct TreeNode* r){
         }
         else if(r->children[1]->type == Node_AND){
             //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
+            struct Type * typePtr1 = handleExp((r->children[0]), NULL);
+            struct Type * typePtr2 = handleExp((r->children[2]), NULL);
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
                 return NULL;
@@ -1003,8 +1066,8 @@ struct Type * handleExp(struct TreeNode* r){
         }
         else if(r->children[1]->type == Node_OR){
             //Exp -> Exp OR Exp
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
+            struct Type * typePtr1 = handleExp((r->children[0]), NULL);
+            struct Type * typePtr2 = handleExp((r->children[2]), NULL);
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
                 return NULL;
@@ -1020,8 +1083,8 @@ struct Type * handleExp(struct TreeNode* r){
         }
         else if(r->children[1]->type == Node_RELOP){
             //Exp -> Exp ReLop Exp
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
+            struct Type * typePtr1 = handleExp((r->children[0]), NULL);
+            struct Type * typePtr2 = handleExp((r->children[2]), NULL);
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
                 return NULL;
@@ -1042,8 +1105,8 @@ struct Type * handleExp(struct TreeNode* r){
         }
         else if(r->children[1]->type == Node_PLUS){
             //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
+            struct Type * typePtr1 = handleExp((r->children[0]), NULL);
+            struct Type * typePtr2 = handleExp((r->children[2]), NULL);
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
                 return NULL;
@@ -1059,8 +1122,8 @@ struct Type * handleExp(struct TreeNode* r){
         }
         else if(r->children[1]->type == Node_MINUS){
             //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
+            struct Type * typePtr1 = handleExp((r->children[0]), NULL);
+            struct Type * typePtr2 = handleExp((r->children[2]), NULL);
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
                 return NULL;
@@ -1076,8 +1139,8 @@ struct Type * handleExp(struct TreeNode* r){
         }
         else if(r->children[1]->type == Node_STAR){
             //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
+            struct Type * typePtr1 = handleExp((r->children[0]), NULL);
+            struct Type * typePtr2 = handleExp((r->children[2]), NULL);
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
                 return NULL;
@@ -1094,8 +1157,8 @@ struct Type * handleExp(struct TreeNode* r){
         else if(r->children[1]->type == Node_DIV){
             //除以零的错误???TODO
             //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
+            struct Type * typePtr1 = handleExp((r->children[0]), NULL);
+            struct Type * typePtr2 = handleExp((r->children[2]), NULL);
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
                 return NULL;
@@ -1111,7 +1174,7 @@ struct Type * handleExp(struct TreeNode* r){
         }
         else if(r->children[0]->type == Node_LP){
             //Exp -> LP Exp RP
-           return handleExp(r->children[1]);
+           return handleExp((r->children[1]), NULL);
         }
         else if(r->children[1]->type == Node_LP){
             //Exp -> ID LP RP
@@ -1140,7 +1203,7 @@ struct Type * handleExp(struct TreeNode* r){
         else{
             //Exp -> Exp DOT ID
             assert(r->children[1]->type == Node_DOT);//前面太多了，assert一下
-            struct Type * expTypePtr = handleExp(r->children[0]);
+            struct Type * expTypePtr = handleExp((r->children[0]), NULL);
             //判断ptr是否非NULL且为Structure并且有域ID
             if(expTypePtr == NULL){
                 //如果是NULL,说明递归exp已经错了，这里就不报错了
@@ -1200,11 +1263,82 @@ struct Type * handleExp(struct TreeNode* r){
         else{
             //Exp -> Exp LB Exp RB
             assert(r->children[0]->type == Node_Exp);
-            struct Type * typePtr1 = handleExp(r->children[0]);
-            struct Type * typePtr2 = handleExp(r->children[2]);
+
+            struct Operand *tmpIdx = getNewTmpVar();
+            struct Operand *preOffset = getNewTmpVar();
+            struct Type * typePtr1 = handleExp((r->children[0]), preOffset);//将preOffset设置好
+            struct Type * typePtr2 = handleExp((r->children[2]), tmpIdx);//得到下标
             //1应该是array,2是INT
             if((typePtr1 != NULL)&&(typePtr1->kind==ARRAY)&&(typePtr2 != NULL)
                 &&(typePtr2->kind==BASIC)&&(typePtr2->info.basicType == TYPE_INT)){
+                    assert(preOffset->kind == OPEARND_ADDR);
+
+                    //要新建一个临时变量计算新的偏移量
+                    //先计算要加上的偏移量，用idx*width得到
+                    struct Operand * addOffset = getNewTmpVar();
+                    struct Operand * width = newOperand();
+                    width->kind = OPEARND_CONSTANT;
+                    width->info.constantVal = typePtr1->info.array->elemWidth;
+                    struct InterCode * ICPtr = newICNode(-1);
+                    ICPtr->numOperands = 3;
+                    ICPtr->operands[0] = addOffset;
+                    ICPtr->operands[1] = tmpIdx;
+                    ICPtr->operands[2] = width;
+                    ICPtr->kind = IC_MUL;
+                    appendInterCodeToList(ICPtr);
+                    //现在addoffest对应的临时变量已经记录的新加偏移量了
+                    //得到加和总偏移量
+                    
+                    if(typePtr1->info.array->elem->kind != ARRAY){
+                        //当前是最后一个，还要进行&得到base以及+base到place
+                        struct Operand * sumOffset = getNewTmpVar();//产生一个新的临时变量
+                        ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 3;
+                        ICPtr->operands[0] = sumOffset;
+                        ICPtr->operands[1] = preOffset;
+                        ICPtr->operands[2] = addOffset;
+                        ICPtr->kind = IC_PLUS;
+                        appendInterCodeToList(ICPtr);
+                        //得到base到临时变量
+                        struct Operand * base = getNewTmpVar();
+                        ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 2;
+                        ICPtr->operands[0] = base;
+                        ICPtr->operands[1] = getNewTmpVar();
+                        ICPtr->operands[1]->kind = OPEARND_VAR;
+                        ICPtr->operands[1]->info.varName = preOffset->info.address.varName;
+                        ICPtr->kind = IC_GET_ADDR;
+                        appendInterCodeToList(ICPtr);
+                        //现在base对应的变量保存了基地址，加上偏移量
+                        struct Operand * absAddr = getNewTmpVar();
+                        ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 3;
+                        ICPtr->operands[0] = absAddr;
+                        ICPtr->operands[1] = base;
+                        ICPtr->operands[2] = sumOffset;
+                        ICPtr->kind = IC_PLUS;
+                        appendInterCodeToList(ICPtr);
+                    }
+                    else{
+                        struct Operand * sumOffset = getNewTmpVar();//产生一个新的临时变量
+                        ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 3;
+                        ICPtr->operands[0] = sumOffset;
+                        ICPtr->operands[1] = preOffset;
+                        ICPtr->operands[2] = addOffset;
+                        ICPtr->kind = IC_PLUS;
+                        appendInterCodeToList(ICPtr);
+                        //得到base到临时变量
+                        ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 2;
+                        ICPtr->operands[0] = place;
+                        ICPtr->operands[1] = sumOffset;
+                        ICPtr->kind = IC_ASSIGN;
+                        appendInterCodeToList(ICPtr);
+                        place->kind = OPEARND_ADDR;
+                        place->info.address.varName = preOffset->info.address.varName;
+                    }
+
                     return typePtr1->info.array->elem;//返回上一层类型
                 }
             else{
@@ -1230,7 +1364,7 @@ struct FieldList* handleArgs(struct TreeNode* r){
         //Args -> Exp
         struct FieldList* FL = (struct FieldList*)malloc(sizeof(struct FieldList));
         FL->name = NULL;
-        FL->type = handleExp(r->children[0]);
+        FL->type = handleExp((r->children[0]), NULL);
         FL->line = r->children[0]->line;
         FL->next = NULL;
         return FL;
@@ -1238,7 +1372,7 @@ struct FieldList* handleArgs(struct TreeNode* r){
     else{
         //Args -> Exp Comma Args
         struct FieldList* FL1 = (struct FieldList*)malloc(sizeof(struct FieldList));
-        FL1->type =  handleExp(r->children[0]);//单个
+        FL1->type =  handleExp((r->children[0]), NULL);//单个
         FL1->name = NULL;
         FL1->line = r->children[1]->line;
         struct FieldList* FL2 = handleArgs(r->children[2]);
@@ -1265,6 +1399,9 @@ void appendInterCodeToList(struct InterCode* ICNodePtr){
 
 struct InterCode* newICNode(int numOperands){
     struct InterCode* ptr = (struct InterCode*)malloc(sizeof(struct InterCode));
+    if(numOperands == -1){
+        return ptr;//调用者自己完成
+    }
     ptr->numOperands = numOperands;
     for(int i = 0;i < numOperands;++i){
         ptr->operands[i] = (struct Operand *)malloc(sizeof(struct Operand));
@@ -1273,17 +1410,21 @@ struct InterCode* newICNode(int numOperands){
 }
 
 //获取新的跳转标号
-int getNewLabel(){
-    int cur = nrLabel;
+struct Operand* getNewLabel(){
+    struct Operand* labelOp = (struct Operand*)malloc(sizeof(struct Operand));
+    labelOp->kind = OPERAND_LABEL;
+    labelOp->info.laeblNo = nrLabel;
     nrLabel++;
-    return cur;
+    return labelOp;
 }
 
 //获取新的临时变量
-int getNewTmpVar(){
-    int cur = nrTmpVar;
+struct Operand* getNewTmpVar(){
+    struct Operand* tmpValOp = (struct Operand*)malloc(sizeof(struct Operand));
+    tmpValOp->kind = OPEARND_TMP_VAR;//这个不一定
+    tmpValOp->info.tmpVarNo = nrTmpVar;
     nrTmpVar++;
-    return cur;
+    return tmpValOp;
 }
 
 void printInterCodeList(FILE* fd){
@@ -1307,10 +1448,39 @@ void printInterCodeList(FILE* fd){
             assert(curPtr->numOperands == 1);
             fprintf(fd,"DEC %s %d\n",curPtr->operands[0]->info.varName,curPtr->allocSize);
         }break;
+        case IC_ASSIGN:{
+            assert(curPtr->numOperands == 2);
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, " := ");
+            printOperand(fd, curPtr->operands[1]);
+            fprintf(fd, "\n");
+        }
         default:
             break;
         }
         curPtr = curPtr->next;
     } while (curPtr != InterCodeList);
 
+}
+
+struct Operand*  newOperand(){
+    struct Operand* ptr = (struct Operand*)malloc(sizeof(struct Operand));
+    return ptr;
+}
+
+void printOperand(FILE* fd, struct Operand* op){
+    switch (op->kind)
+    {
+    case OPEARND_VAR:{
+        fprintf(fd, "%s", op->info.varName);
+    }break;
+    case OPEARND_TMP_VAR:{
+        fprintf(fd, "t%d", op->info.tmpVarNo);
+    }break;
+    case OPEARND_CONSTANT:{
+        fprintf(fd, "#%d", op->info.constantVal);
+    }break;
+    default:
+        assert(0);
+    }
 }
