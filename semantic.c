@@ -7,6 +7,8 @@ int hashType = 1;
 struct Variable *variableTable[TABLE_SIZE];
 struct Structure *structureTable[TABLE_SIZE];
 struct Func *funcTable[TABLE_SIZE];
+struct InterCode* InterCodeList = NULL;
+
 
 int calculateWidth(struct Type* typePtr){
     assert(typePtr != NULL);
@@ -424,11 +426,12 @@ void handleExtDef(struct TreeNode* r){
     if((r->numChildren == 3) && (r->children[2]->type == Node_SEMI)){
         //ExtDef -> Specifier ExtDecList SEMI
         struct FieldList * FL = handleExtDecList(r->children[1],typePtr);//传入类型，在内部创建变量
-        printFieldList(FL,0);
+        // printFieldList(FL,0);
+        //LAB3 没有全局变量
+        assert(0);
     }
     else if((r->numChildren == 3) && (r->children[2]->type == Node_Compst)){
         //ExtDef -> Specifier FunDec Compst
-        //TODO 函数部分
         struct Func* funcPtr = handleFuncDec(r->children[1],typePtr);
         //函数头加入函数表
         if(searchFuncTable(funcPtr->name) == NULL){
@@ -1189,3 +1192,20 @@ struct FieldList* handleArgs(struct TreeNode* r){
         return FL1;//连上
     }
 }
+
+void appendInterCodeToList(struct InterCode* ICNodePtr){
+    assert(ICNodePtr != NULL);
+    //ICNodePtr只是一个节点
+    if(InterCodeList == NULL){
+        //初始情况
+        InterCodeList = ICNodePtr;
+        InterCodeList->next = InterCodeList->prev = InterCodeList;
+    }
+    else{
+        ICNodePtr->next = InterCodeList;
+        ICNodePtr->prev = InterCodeList->prev;
+        InterCodeList->prev->next = ICNodePtr;
+        InterCodeList->prev = ICNodePtr;
+    }
+}
+

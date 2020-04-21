@@ -75,13 +75,64 @@ struct NameNode
     struct NameNode*next;
 };
 
+struct Operand
+{
+    //操作数类型
+    enum{
+        OPERAND_LABEL,//跳转标号
+        OPERAND_FUNC,//函数名
+        OPEARND_VAR,//普通局部变量名
+        OPEARND_TMP_VAR,//中间代码临时变量 tmpNo
+        OPEARND_CONSTANT,//常数INT
+        OPEARND_ADDR//地址，其实还是用一个临时变量存储地址 tmpNo
+    }kind;
+    union{
+        int laeblNo;
+        char* funcName;
+        char* varName;
+        int tmpVarNo;//临时变量ID或者临时变量地址
+        int constantVal;
+    }info;
+};
+
+//中间代码
+struct InterCode
+{
+    enum{
+        IC_LABEL_DEF,
+        IC_FUNC_DEF,
+        IC_ASSIGN,
+        IC_PLUS,
+        IC_SUB,
+        IC_MUL,
+        IC_DIV,
+        IC_GET_ADDR,
+        IC_WRITE_TO_ADDR,
+        IC_DOTO,
+        IC_RELOP_GOTO,
+        IC_RETURN,
+        IC_DEC,
+        IC_ARG,
+        IC_CALL,
+        IC_PARAM,
+        IC_READ,
+        IC_WRITE
+    }kind;
+    struct Operand* operands[3];//最多3个操作数
+    int Relop;//具体表明relop类型
+    int numOperands;//操作数数量
+    struct InterCode* next;
+    struct InterCode* prev;
+};
+
+
 struct NameNode** getNameHashSet(int sz);
 int nameSetContains(struct NameNode** set,int sz,char* name);
 void insertIntoSet(struct NameNode** set,int sz,char*name);
 void freeSet(struct NameNode** set,int sz);
 
 //根据name查表
-struct Func* searchFuncTable(char*name);
+struct Func* searchFuncTable(char*name); 
 struct Structure* searchStructureTable(char*name);
 struct Variable* searchVariableTable(char*name); 
 
@@ -165,4 +216,6 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr);
 struct Type * handleExp(struct TreeNode* r);
 
 struct FieldList* handleArgs(struct TreeNode* r);
+
+void appendInterCodeToList(struct InterCode* ICNodePtr);
 #endif
