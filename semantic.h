@@ -3,6 +3,7 @@
 #include "tree.h"
 //哈希表大小
 #define TABLE_SIZE 100
+#define INT_FLOAT_SIZE 4
 extern int numHashSearch;
 
 //类型定义:基本类型、数组类型、结构体
@@ -42,8 +43,12 @@ struct Func
 //数组类型
 struct Array
 {
+    //元素类型
     struct Type* elem;
-    int size;
+    //元素数量
+    int numElem;
+    //单个元素所占空间
+    int elemWidth;
 };
 
 //变量表项
@@ -97,6 +102,9 @@ void printFieldList(struct FieldList* ptr,int nrSpace);
 //打印函数头
 void printFuncDec(struct Func* funcPtr,int nrSpace);
 
+//计算类型所占的空间
+int calculateWidth(struct Type* typePtr);
+
 //根据name取得哈希值，得到table表项地址
 unsigned hash(char*name,int sz);
 
@@ -111,7 +119,7 @@ int checkTypeSame(struct Type *typePtr1,struct Type *typePtr2);
 //判断参数列表是否符合
 int checkFieldListSame(struct FieldList*FL1,struct FieldList*FL2);
 
-//反转数组
+//反转数组,并且填写width
 void reverseArray(struct Type * arrayType);
 
 void handleProgram(struct TreeNode* r);

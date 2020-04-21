@@ -8,6 +8,36 @@ struct Variable *variableTable[TABLE_SIZE];
 struct Structure *structureTable[TABLE_SIZE];
 struct Func *funcTable[TABLE_SIZE];
 
+int calculateWidth(struct Type* typePtr){
+    //不用到width属性
+    int sumWidth = 0;
+    switch (typePtr->kind)
+    {
+    case BASIC:{
+        sumWidth = INT_FLOAT_SIZE;
+    }break;
+    case ARRAY:{
+        //计算维数乘积
+        int product = 1;
+        while (typePtr->kind == ARRAY)
+        {
+            product = product * typePtr->info.array->numElem;
+            typePtr = typePtr->info.array->elem;
+        }
+        sumWidth = product * calculateWidth(typePtr);
+    }break;
+    case STRUCTURE:{
+        struct FieldList * ptr = typePtr->info.structure->structureInfo;
+        while (ptr != NULL)
+        {
+            sumWidth += calculateWidth(ptr->type);
+            ptr = ptr->next;
+        }
+    }break;
+    }
+    return sumWidth;
+}
+
 void reverseArray(struct Type * arrayTypePtr){
     assert(arrayTypePtr->kind == ARRAY);
     //先计算总维数
@@ -22,24 +52,37 @@ void reverseArray(struct Type * arrayTypePtr){
         return;
     }
     //高维
+    int baseWidth = calculateWidth(curType);//基类型宽度
     int* dimSizes = (int*)malloc(sizeof(int)*numDim);
-    int curDim = 0;
+    int* dimWidths = (int*)malloc(sizeof(int)*numDim);
+    int curDim = numDim - 1;
     curType = arrayTypePtr;
     while (curType->kind == ARRAY)
     {
-        dimSizes[curDim] = curType->info.array->size;
-        curDim++;
+        dimSizes[curDim] = curType->info.array->numElem;
+        curDim--;
         curType = curType->info.array->elem;
     }
-    curDim = numDim - 1;
+
+    assert(curDim == -1);
+
+    dimWidths[0] = baseWidth;
+    for(int i = 1;i < numDim;++i){
+        dimWidths[i] = dimSizes[i - 1] * dimWidths[i - 1];
+    }
+    
+    curDim = 0;
     curType = arrayTypePtr;
     while (curType->kind == ARRAY)
     {
-        curType->info.array->size = dimSizes[curDim];
-        --curDim;
+        curType->info.array->numElem = dimSizes[curDim];
+        ++curDim;
         curType = curType->info.array->elem;
     }
+    assert(curDim == numDim);
+
     free(dimSizes);//释放空间
+    free(dimWidths);
 }
 
 void printError(int type,int line,char* msg){
@@ -273,7 +316,7 @@ void printType(struct Type*typePtr,int nrSpace){
             }break;
             case ARRAY:{
                 printSpace(nrSpace);
-                printf("Kind:ARRAY,size = %d\n",typePtr->info.array->size);
+                printf("Kind:ARRAY,size = %d\n",typePtr->info.array->numElem);
                 printType(typePtr->info.array->elem,nrSpace+2);
             }break;
             case STRUCTURE:{
@@ -376,7 +419,7 @@ void handleExtDef(struct TreeNode* r){
     if((r->numChildren == 3) && (r->children[2]->type == Node_SEMI)){
         //ExtDef -> Specifier ExtDecList SEMI
         struct FieldList * FL = handleExtDecList(r->children[1],typePtr);//传入类型，在内部创建变量
-        printFieldList(FL,0);
+        // printFieldList(FL,0);
     }
     else if((r->numChildren == 3) && (r->children[2]->type == Node_Compst)){
         //ExtDef -> Specifier FunDec Compst
@@ -472,7 +515,7 @@ struct FieldList* handleVarDec2(struct TreeNode* r,struct Type * typePtr){
         arrayPtr->kind = ARRAY;
         arrayPtr->info.array = (struct Array*)malloc(sizeof(struct Array));
         arrayPtr->info.array->elem = typePtr2;
-        arrayPtr->info.array->size = r->children[2]->val.intVal;
+        arrayPtr->info.array->numElem = r->children[2]->val.intVal;
         FL->next = NULL;
         FL->type = arrayPtr;
         //Attention!这里数组维度是逆序，int a[2][3]的3在Array链表头部
@@ -655,7 +698,7 @@ struct Type* handleVarDec(struct TreeNode* r,struct Type * typePtr,char**namePtr
         arrayPtr->kind = ARRAY;
         arrayPtr->info.array = (struct Array*)malloc(sizeof(struct Array));
         arrayPtr->info.array->elem = typePtr2;
-        arrayPtr->info.array->size = r->children[2]->val.intVal;
+        arrayPtr->info.array->numElem = r->children[2]->val.intVal;
         //Attention!这里数组维度是逆序，int a[2][3]的3在Array链表头部
         return arrayPtr;
     }
