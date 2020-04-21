@@ -6,6 +6,9 @@
 #define INT_FLOAT_SIZE 4
 extern int numHashSearch;
 
+extern int nrTmpVar;
+extern int nrLabel;
+
 //类型定义:基本类型、数组类型、结构体
 struct Type
 {
@@ -120,6 +123,7 @@ struct InterCode
     }kind;
     struct Operand* operands[3];//最多3个操作数
     int Relop;//具体表明relop类型
+    int allocSize;//用于DEC
     int numOperands;//操作数数量
     struct InterCode* next;
     struct InterCode* prev;
@@ -218,4 +222,16 @@ struct Type * handleExp(struct TreeNode* r);
 struct FieldList* handleArgs(struct TreeNode* r);
 
 void appendInterCodeToList(struct InterCode* ICNodePtr);
+
+//创建一个ICNode并且分配
+struct InterCode* newICNode(int numOperands);
+
+//获取新的跳转标号
+int getNewLabel();
+
+//获取新的临时变量
+int getNewTmpVar();
+
+//打印中间代码
+void printInterCodeList(FILE* fd);
 #endif

@@ -9,6 +9,10 @@ struct Structure *structureTable[TABLE_SIZE];
 struct Func *funcTable[TABLE_SIZE];
 struct InterCode* InterCodeList = NULL;
 
+//中间代码中临时变量数量
+int nrTmpVar = 0;
+//中间代码中跳转标号数量
+int nrLabel = 0;
 
 int calculateWidth(struct Type* typePtr){
     assert(typePtr != NULL);
@@ -433,6 +437,27 @@ void handleExtDef(struct TreeNode* r){
     else if((r->numChildren == 3) && (r->children[2]->type == Node_Compst)){
         //ExtDef -> Specifier FunDec Compst
         struct Func* funcPtr = handleFuncDec(r->children[1],typePtr);
+
+        //增加ICNode
+        struct InterCode* ICFuncPtr = newICNode(1);
+        ICFuncPtr->kind = IC_FUNC_DEF;
+        ICFuncPtr->operands[0]->kind = OPERAND_FUNC;
+        ICFuncPtr->operands[0]->info.funcName = funcPtr->name;
+        appendInterCodeToList(ICFuncPtr);
+
+        struct FieldList * paramListPtr = funcPtr->params;
+        while (paramListPtr != NULL)
+        {
+            struct InterCode* ICPramPtr = newICNode(1);
+            ICPramPtr->kind = IC_PARAM;
+            //形式参数也是变量，有全局作用域
+            ICPramPtr->operands[0]->kind = OPEARND_VAR;
+            ICPramPtr->operands[0]->info.varName = paramListPtr->name;
+            appendInterCodeToList(ICPramPtr);
+            paramListPtr = paramListPtr->next;
+        }
+        
+
         //函数头加入函数表
         if(searchFuncTable(funcPtr->name) == NULL){
             insertFuncTable(funcPtr);
@@ -648,6 +673,20 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc
         if(typePtr2->kind == ARRAY)
             reverseArray(typePtr2);
 
+        //如果是数组，中间代码要分配空间,Lab3 不会出现结构体，结构体报错
+        if(typePtr2->kind == STRUCTURE){
+            printf("Cannot translate: Code contains Variables or parameter of structure type.\n");
+        }
+        else if(typePtr2->kind == ARRAY){
+            int spaceNeeded = calculateWidth(typePtr2);
+            struct InterCode * ICPtr = newICNode(1);
+            ICPtr->kind = IC_DEC;
+            ICPtr->allocSize = spaceNeeded;
+            ICPtr->operands[0]->kind = OPEARND_VAR;
+            ICPtr->operands[0]->info.varName = name;
+            appendInterCodeToList(ICPtr);
+        }
+
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
         FL->next = NULL;
@@ -667,6 +706,21 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc
         //反转数组
         if(typePtr2->kind == ARRAY)
             reverseArray(typePtr2);
+
+        //如果是数组，中间代码要分配空间,Lab3 不会出现结构体，结构体报错
+        if(typePtr2->kind == STRUCTURE){
+            printf("Cannot translate: Code contains Variables or parameter of structure type.\n");
+        }
+        else if(typePtr2->kind == ARRAY){
+            int spaceNeeded = calculateWidth(typePtr2);
+            struct InterCode * ICPtr = newICNode(1);
+            ICPtr->kind = IC_DEC;
+            ICPtr->allocSize = spaceNeeded;
+            ICPtr->operands[0]->kind = OPEARND_VAR;
+            ICPtr->operands[0]->info.varName = name;
+            appendInterCodeToList(ICPtr);
+            //TODO 还有赋值Exp解析部分 
+        }
 
         FL->name = name;//不空
         FL->type = typePtr2;//可能变成了数组
@@ -1209,3 +1263,54 @@ void appendInterCodeToList(struct InterCode* ICNodePtr){
     }
 }
 
+struct InterCode* newICNode(int numOperands){
+    struct InterCode* ptr = (struct InterCode*)malloc(sizeof(struct InterCode));
+    ptr->numOperands = numOperands;
+    for(int i = 0;i < numOperands;++i){
+        ptr->operands[i] = (struct Operand *)malloc(sizeof(struct Operand));
+    }
+    return ptr;
+}
+
+//获取新的跳转标号
+int getNewLabel(){
+    int cur = nrLabel;
+    nrLabel++;
+    return cur;
+}
+
+//获取新的临时变量
+int getNewTmpVar(){
+    int cur = nrTmpVar;
+    nrTmpVar++;
+    return cur;
+}
+
+void printInterCodeList(FILE* fd){
+    if(InterCodeList == NULL){
+        return;
+    }
+    struct InterCode * curPtr = InterCodeList;
+    do
+    {
+        switch (curPtr->kind)
+        {
+        case IC_FUNC_DEF:{
+            assert(curPtr->numOperands == 1);
+            fprintf(fd,"FUNCTION %s :\n",curPtr->operands[0]->info.funcName);
+        }break;
+        case IC_PARAM:{
+            assert(curPtr->numOperands == 1);
+            fprintf(fd,"PARAM %s\n",curPtr->operands[0]->info.varName);
+        }break;
+        case IC_DEC:{
+            assert(curPtr->numOperands == 1);
+            fprintf(fd,"DEC %s %d\n",curPtr->operands[0]->info.varName,curPtr->allocSize);
+        }break;
+        default:
+            break;
+        }
+        curPtr = curPtr->next;
+    } while (curPtr != InterCodeList);
+
+}
