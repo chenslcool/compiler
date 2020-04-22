@@ -20,6 +20,7 @@ int main(int argc,char** argv){
         yyparse();
         if(SyntaxError == 0){
             // preTraverse(root,0);
+            initReadAndWrite();
             handleProgram(root);
             // fprintf(stderr,"HashSize = %d,numHashSearch = %d\n",TABLE_SIZE,numHashSearch);
         }

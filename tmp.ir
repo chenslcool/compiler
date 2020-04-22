@@ -1,0 +1,26 @@
+FUNCTION main :
+READ t0
+rv1 := t0
+READ t1
+rv2 := t1
+t12 := rv1
+t9 := #0 - t12
+t10 := #2
+t7 := t9 * t10
+t13 := rv2
+t14 := #3
+t8 := t13 / t14
+t5 := t7 + t8
+t6 := #2
+t3 := t5 + t6
+t4 := #7
+t2 := t3 - t4
+sum := t2
+t16 := sum
+t17 := sum
+t15 := t16 + t17
+i := t15
+t18 := i
+WRITE t18
+t19 := #0
+RETURN t19

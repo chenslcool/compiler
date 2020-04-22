@@ -9,6 +9,8 @@ struct Structure *structureTable[TABLE_SIZE];
 struct Func *funcTable[TABLE_SIZE];
 struct InterCode* InterCodeList = NULL;
 
+struct Type * intTypePtr = NULL;
+
 //中间代码中临时变量数量
 int nrTmpVar = 0;
 //中间代码中跳转标号数量
@@ -727,7 +729,7 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc
         //先创建一个临时变量ti
         struct Operand* tmp = getNewTmpVar();
         //用Exp处理将tmp临时变量赋值，生成相应中间码
-        struct Type* expTypePtr = handleExp(r->children[2],tmp, 1);//得到一个临时变量
+        struct Type* expTypePtr = handleExp(r->children[2],tmp, 1);//得到一个临时变量，如果是数组类型，要求取值
         assert(tmp->kind == OPEARND_TMP_VAR);
         struct InterCode * ICPtr = newICNode(1);//但是我需要2个，第二个自己初始化
         ICPtr->numOperands = 2;
@@ -878,11 +880,20 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr){
     else if(r->numChildren == 3){
         //Stmt -> Return Exp Semi
         //判断返回值类型
-        struct Type * expTypePtr = handleExp(r->children[1], NULL,  0);
+
+        struct Operand * opRet = getNewTmpVar();
+        //将函数的返回值存到临时变量中，如果是数组类型要求值
+        struct Type * expTypePtr = handleExp(r->children[1], opRet, 1);
         //如果Exp返回类型为NULL,说明Exp里面已经报错，不用再报
         if((expTypePtr != NULL)&&checkTypeSame(expTypePtr,typePtr) == 0){
             printError(8,r->children[0]->line,"Return type mismatch.");
         }
+        assert(opRet->kind == OPEARND_TMP_VAR);
+        struct InterCode * ICPtr = newICNode(-1);
+        ICPtr->numOperands = 1;
+        ICPtr->operands[0] = opRet;
+        ICPtr->kind = IC_RETURN;
+        appendInterCodeToList(ICPtr);
     }
     else if(r->numChildren == 5){
         if(r->children[0]->type == Node_IF){
@@ -989,6 +1000,7 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
         else{
             //Exp -> FLAOT
             //创建一个Type*
+            assert(0);//lab3没有float
             struct Type * typePtr = (struct Type *)malloc(sizeof(struct Type));
             typePtr->kind = BASIC;
             typePtr->info.basicType = TYPE_FLOAT;
@@ -1012,13 +1024,25 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
         else{
             //Exp -> Neg Exp
             //判断Exp 是不是NULL或者basic类型
-            struct Type * typePtr = handleExp(r->children[1], NULL,  0);
+            struct Operand * t1 = getNewTmpVar();
+            t1->kind = OPEARND_CONSTANT;
+            t1->info.constantVal = 0;
+            struct Operand * t2 = getNewTmpVar();
+            struct Type * typePtr = handleExp(r->children[1], t2,  1);
             if((typePtr == NULL) || (typePtr->kind != BASIC) ){
                 //操作数类型不匹配
                 printError(7,r->children[0]->line,"Variable(s) type mismatch.");
                 return NULL;//????
             }
             else{
+                assert(t1->kind == OPEARND_CONSTANT && t2->kind == OPEARND_TMP_VAR);
+                struct InterCode *INPtr = newICNode(-1);
+                INPtr->numOperands = 3;
+                INPtr->operands[0] = place;
+                INPtr->operands[1] = t1;
+                INPtr->operands[2] = t2;
+                INPtr->kind = IC_SUB;
+                appendInterCodeToList(INPtr);
                 return typePtr;//类型不变
             }
         }
@@ -1037,14 +1061,44 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
                 //暂时继续分析吧TODO may FIX it
             }
             //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
-            struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
+            struct Operand * left = getNewTmpVar();
+            struct Operand * right = getNewTmpVar();
+
+            struct Type * typePtr1 = handleExp(r->children[0], left,  0);//如果是数组需要不需要取值
+            struct Type * typePtr2 = handleExp(r->children[2], right,  1);
             //这两个都有可能返回NULL,如果有一个NULL，说明其中一个Exp的类型不存在(出错)
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
                 return NULL;
             }
             if(checkTypeSame(typePtr1,typePtr2) == 1){//类型相同，非空
+                //生成赋值语句中间代码
+                struct InterCode * ICPtr = newICNode(-1);
+                ICPtr->numOperands = 2;
+                ICPtr->operands[0] = left;
+                ICPtr->operands[1] = right;
+                if(left->kind == OPEARND_ADDR){
+                    //*x := y
+                    assert(left->kind == OPEARND_ADDR);
+                    ICPtr->kind = IC_WRITE_TO_ADDR;
+                }
+                else{//左侧是一个普通变量,直接赋值给变量,这会使得之前那个left产生了一个废话ti =  left
+                    ICPtr->operands[0] = newOperand();
+                    ICPtr->operands[0]->kind = OPEARND_VAR;
+                    ICPtr->operands[0]->info.varName = r->children[0]->children[0]->idName;
+                    ICPtr->kind = IC_ASSIGN;
+                }
+                appendInterCodeToList(ICPtr);
+                if(place != NULL){
+                    //给place赋值
+                    ICPtr = newICNode(-1);
+                    ICPtr->numOperands = 2;
+                    ICPtr->operands[0] = place;
+                    place->kind = OPEARND_TMP_VAR;
+                    ICPtr->operands[1] = right;
+                    ICPtr->kind = IC_ASSIGN;
+                    appendInterCodeToList(ICPtr);
+                }
                 return typePtr1;
             }
             else{
@@ -1111,68 +1165,44 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
                 return NULL;//不能赋值就返回NULL
             }
         }
-        else if(r->children[1]->type == Node_PLUS){
+        else if((r->children[1]->type == Node_PLUS)||(r->children[1]->type == Node_MINUS)
+        ||(r->children[1]->type == Node_STAR)||(r->children[1]->type == Node_DIV)){
             //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
-            struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
+            struct Operand * t1 = getNewTmpVar();
+            struct Operand * t2 = getNewTmpVar();
+            struct Type * typePtr1 = handleExp(r->children[0], t1,  1);
+            struct Type * typePtr2 = handleExp(r->children[2], t2,  1);
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
                 //如果有一个是NULL,说明之前已经错了，这里就不报错了
                 return NULL;
             }
             //基本类型才能PLUS
             if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
-                return typePtr1;
-            }
-            else{
-                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
-                return NULL;//不能赋值就返回NULL
-            }
-        }
-        else if(r->children[1]->type == Node_MINUS){
-            //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
-            struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
-            if((typePtr1 == NULL)||(typePtr2 == NULL)){
-                //如果有一个是NULL,说明之前已经错了，这里就不报错了
-                return NULL;
-            }
-            //基本类型才能Minus
-            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
-                return typePtr1;
-            }
-            else{
-                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
-                return NULL;//不能赋值就返回NULL
-            }
-        }
-        else if(r->children[1]->type == Node_STAR){
-            //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
-            struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
-            if((typePtr1 == NULL)||(typePtr2 == NULL)){
-                //如果有一个是NULL,说明之前已经错了，这里就不报错了
-                return NULL;
-            }
-            //基本类型才能star
-            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
-                return typePtr1;
-            }
-            else{
-                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
-                return NULL;//不能赋值就返回NULL
-            }
-        }
-        else if(r->children[1]->type == Node_DIV){
-            //除以零的错误???TODO
-            //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
-            struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
-            if((typePtr1 == NULL)||(typePtr2 == NULL)){
-                //如果有一个是NULL,说明之前已经错了，这里就不报错了
-                return NULL;
-            }
-            //基本类型才能DIV
-            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
+                assert(t1->kind == OPEARND_TMP_VAR &&t2->kind == OPEARND_TMP_VAR);
+                struct InterCode *INPtr = newICNode(-1);
+                INPtr->numOperands = 3;
+                INPtr->operands[0] = place;
+                INPtr->operands[1] = t1;
+                INPtr->operands[2] = t2;
+                switch (r->children[1]->type)
+                {
+                case Node_PLUS:{
+                    INPtr->kind = IC_PLUS;
+                }break;
+                case Node_MINUS:{
+                    INPtr->kind = IC_SUB;
+                }break;
+                case Node_STAR:{
+                    INPtr->kind = IC_MUL;
+                }break;
+                case Node_DIV:{
+                    INPtr->kind = IC_DIV;
+                }break;
+                default:{
+                    assert(0);
+                }break;
+                }
+                appendInterCodeToList(INPtr);
                 return typePtr1;
             }
             else{
@@ -1186,6 +1216,17 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
         }
         else if(r->children[1]->type == Node_LP){
             //Exp -> ID LP RP
+            if(strcmp(r->children[0]->idName, "read") == 0){
+                //读取一个值先放到临时变量place中，再做其他处理
+                assert(place->kind == OPEARND_TMP_VAR);
+                struct InterCode * ICPtr = newICNode(-1);
+                ICPtr->numOperands = 1;
+                ICPtr->operands[0] = place;
+                ICPtr->kind = IC_READ;
+                appendInterCodeToList(ICPtr);
+                //返回的类型是INT
+                return intTypePtr;
+            }
             //函数调用
             struct Func * funcPtr = searchFuncTable(r->children[0]->idName);
             if(funcPtr == NULL){
@@ -1260,6 +1301,17 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
                 //先得到Args:FL,只有type重要,name不需要
                 struct FieldList* FL = handleArgs(r->children[2]);
                 if(checkFieldListSame(funcPtr->params,FL)){
+                    if(strcmp(r->children[0]->idName, "write") == 0){
+                        //把第一个参数exp的值放到一个局部变量
+                        struct Operand * tmp = getNewTmpVar();
+                        handleExp(r->children[2]->children[0], tmp, 1);
+                        assert(tmp->kind == OPEARND_TMP_VAR);
+                        struct InterCode * ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 1;
+                        ICPtr->operands[0] = tmp;
+                        ICPtr->kind = IC_WRITE;
+                        appendInterCodeToList(ICPtr);
+                    }
                     return funcPtr->retType;//返回的是函数返回类型
                 }
                 else{
@@ -1425,6 +1477,9 @@ struct FieldList* handleArgs(struct TreeNode* r){
 void appendInterCodeToList(struct InterCode* ICNodePtr){
     assert(ICNodePtr != NULL);
     //ICNodePtr只是一个节点
+    //for debug
+    // ICNodePtr->next = ICNodePtr->prev = ICNodePtr;
+    printICPtr(stderr, ICNodePtr);
     if(InterCodeList == NULL){
         //初始情况
         InterCodeList = ICNodePtr;
@@ -1436,6 +1491,7 @@ void appendInterCodeToList(struct InterCode* ICNodePtr){
         InterCodeList->prev->next = ICNodePtr;
         InterCodeList->prev = ICNodePtr;
     }
+    
 }
 
 struct InterCode* newICNode(int numOperands){
@@ -1468,14 +1524,8 @@ struct Operand* getNewTmpVar(){
     return tmpValOp;
 }
 
-void printInterCodeList(FILE* fd){
-    if(InterCodeList == NULL){
-        return;
-    }
-    struct InterCode * curPtr = InterCodeList;
-    do
-    {
-        switch (curPtr->kind)
+void printICPtr(FILE* fd, struct InterCode * curPtr){
+    switch (curPtr->kind)
         {
         case IC_FUNC_DEF:{
             assert(curPtr->numOperands == 1);
@@ -1512,12 +1562,30 @@ void printInterCodeList(FILE* fd){
             printOperand(fd, curPtr->operands[2]);
             fprintf(fd, "\n");
         }break;
+        case IC_SUB:{
+            assert((curPtr->numOperands == 3));
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, " := ");
+            printOperand(fd, curPtr->operands[1]);
+            fprintf(fd, " - ");
+            printOperand(fd, curPtr->operands[2]);
+            fprintf(fd, "\n");
+        }break;
         case IC_MUL:{
             assert((curPtr->numOperands == 3));
             printOperand(fd, curPtr->operands[0]);
             fprintf(fd, " := ");
             printOperand(fd, curPtr->operands[1]);
             fprintf(fd, " * ");
+            printOperand(fd, curPtr->operands[2]);
+            fprintf(fd, "\n");
+        }break;
+         case IC_DIV:{
+            assert((curPtr->numOperands == 3));
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, " := ");
+            printOperand(fd, curPtr->operands[1]);
+            fprintf(fd, " / ");
             printOperand(fd, curPtr->operands[2]);
             fprintf(fd, "\n");
         }break;
@@ -1528,9 +1596,45 @@ void printInterCodeList(FILE* fd){
             printOperand(fd, curPtr->operands[1]);
             fprintf(fd, "\n");
         }break;
+        case IC_WRITE_TO_ADDR:{
+            assert((curPtr->numOperands == 2) && (curPtr->operands[0]->kind == OPEARND_ADDR));
+            fprintf(fd, "*");
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, " := ");
+            printOperand(fd, curPtr->operands[1]);
+            fprintf(fd, "\n");
+        }break;
+        case IC_RETURN:{
+            assert((curPtr->numOperands == 1) && (curPtr->operands[0]->kind == OPEARND_TMP_VAR));
+            fprintf(fd, "RETURN ");
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, "\n");
+        }break;
+        case IC_READ:{
+            assert((curPtr->numOperands == 1) && (curPtr->operands[0]->kind == OPEARND_TMP_VAR));
+            fprintf(fd, "READ ");
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, "\n");
+        }break;
+        case IC_WRITE:{
+            assert((curPtr->numOperands == 1));
+            fprintf(fd, "WRITE ");
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, "\n");
+        }break;
         default:
             break;
         }
+}
+
+void printInterCodeList(FILE* fd){
+    if(InterCodeList == NULL){
+        return;
+    }
+    struct InterCode * curPtr = InterCodeList;
+    do
+    {
+        printICPtr(fd, curPtr);
         curPtr = curPtr->next;
     } while (curPtr != InterCodeList);
 
@@ -1558,4 +1662,25 @@ void printOperand(FILE* fd, struct Operand* op){
     default:
         assert(0);
     }
+}
+
+void initReadAndWrite(){
+    intTypePtr = (struct Type *)malloc(sizeof(struct Type));
+    intTypePtr->kind = BASIC;
+    intTypePtr->info.basicType = TYPE_INT;   
+    struct Func* readFunc = (struct Func*)malloc(sizeof(struct Func));
+    readFunc->name = "read";
+    readFunc->params = NULL;
+    readFunc->retType = intTypePtr;
+
+    struct Func* writeFunc = (struct Func*)malloc(sizeof(struct Func));
+    writeFunc->name = "write";
+    struct FieldList * FL = (struct FieldList *)malloc(sizeof(struct FieldList));
+    FL->next = NULL;
+    FL->type = intTypePtr;
+    writeFunc->params = FL;
+    writeFunc->retType = NULL;
+
+    insertFuncTable(readFunc);
+    insertFuncTable(writeFunc);
 }

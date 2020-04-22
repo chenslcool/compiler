@@ -243,4 +243,9 @@ void printInterCodeList(FILE* fd);
 
 //根据操作数类型打印，不输出多余空白
 void printOperand(FILE* fd, struct Operand* op);
+
+void printICPtr(FILE* fd, struct InterCode * curPtr);
+
+//向函数表插入read和write初始化
+void initReadAndWrite();
 #endif
