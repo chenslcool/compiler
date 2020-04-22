@@ -1065,6 +1065,14 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
             struct Operand * right = getNewTmpVar();
 
             struct Type * typePtr1 = handleExp(r->children[0], left,  0);//如果是数组需要不需要取值
+            
+            //算是优化的一步吧
+            if(left->kind != OPEARND_ADDR){//删除无用的那个t = a中间代码
+                assert(r->children[0]->numChildren == 1);
+                struct InterCode * delPtr = InterCodeList->prev;
+                delPtr->prev->next = delPtr->next;
+                delPtr->next->prev = delPtr->prev;//内存泄漏?
+            }
             struct Type * typePtr2 = handleExp(r->children[2], right,  1);
             //这两个都有可能返回NULL,如果有一个NULL，说明其中一个Exp的类型不存在(出错)
             if((typePtr1 == NULL)||(typePtr2 == NULL)){
@@ -1082,7 +1090,8 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
                     assert(left->kind == OPEARND_ADDR);
                     ICPtr->kind = IC_WRITE_TO_ADDR;
                 }
-                else{//左侧是一个普通变量,直接赋值给变量,这会使得之前那个left产生了一个废话ti =  left
+                else{
+                    //赋值号左侧是一个普通变量,直接赋值给变量,这会使得之前那个left产生了一个废话ti =  left
                     ICPtr->operands[0] = newOperand();
                     ICPtr->operands[0]->kind = OPEARND_VAR;
                     ICPtr->operands[0]->info.varName = r->children[0]->children[0]->idName;
