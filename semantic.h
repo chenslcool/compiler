@@ -94,14 +94,9 @@ struct Operand
         char* funcName;
         char* varName;
         int tmpVarNo;//临时变量ID
-        struct 
-        {
-            int tmpVarNoAddr;//偏移量
-            char* varName;//地址一定是相对于某个普通变量(数组)的，记录数组名字,可以得到base
-        }address;
-        
         int constantVal;
     }info;
+    char* baseName;//引用的变量名，在数组翻译的时候用
 };
 
 //中间代码
@@ -116,6 +111,7 @@ struct InterCode
         IC_MUL,
         IC_DIV,
         IC_GET_ADDR,
+        IC_GET_VALUE,
         IC_WRITE_TO_ADDR,
         IC_DOTO,
         IC_RELOP_GOTO,
@@ -223,7 +219,7 @@ void handleStmtList(struct TreeNode* r,struct Type * typePtr);
 
 void handleStmt(struct TreeNode* r,struct Type * typePtr);
 
-struct Type * handleExp(struct TreeNode* r, struct Operand* place);
+struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVal);
 
 struct FieldList* handleArgs(struct TreeNode* r);
 
