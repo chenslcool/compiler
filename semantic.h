@@ -58,6 +58,7 @@ struct Array
 struct Variable
 {
     char* name;//变量名
+    int isParam;//是否为形式参数
     struct Type* varType;
     int firstAppearanceLine;//第一次出现的行号
     struct Variable* next; 

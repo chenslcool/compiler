@@ -751,6 +751,7 @@ struct FieldList* handleDec(struct TreeNode* r,struct Type * typePtr,int inStruc
         if((searchVariableTable(FL->name) == NULL)&&(searchStructureTable(FL->name) == NULL)){
             //不存在重定义
             struct Variable * varPtr = getVarPtr(FL,FL->line);
+            varPtr->isParam = 0;//局部变量
             insertVariableTable(varPtr);
         }
         else{
@@ -841,6 +842,7 @@ struct FieldList* handleParamDec(struct TreeNode* r){
     }
     else{
         struct Variable* varPtr = getVarPtr(FL,FL->line);
+        varPtr->isParam = 1;//是形参
         insertVariableTable(varPtr);
     }
     return FL;
@@ -1305,17 +1307,32 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
 
                     if(typePtr1->info.array->elem->kind != ARRAY){
                         //当前是最后一个，还要进行&得到base以及+base到place
-                        //得到base到临时变量
+                        //得到base到临时变量，根据是形参还是局部变觉得要不要&
                         struct Operand * base = getNewTmpVar();
-                        ICPtr = newICNode(-1);
-                        ICPtr->numOperands = 2;
-                        ICPtr->operands[0] = base;
-                        ICPtr->operands[1] = newOperand();
-                        ICPtr->operands[1]->kind = OPEARND_VAR;
-                        ICPtr->operands[1]->info.varName = preOffset->baseName;
-                        // ICPtr->operands[1]->baseName = preOffset->baseName;
-                        ICPtr->kind = IC_GET_ADDR;//base := & x
-                        appendInterCodeToList(ICPtr);
+
+                        if(searchVariableTable(preOffset->baseName)->isParam == 0){
+                            //局部数组要取地址
+                            ICPtr = newICNode(-1);
+                            ICPtr->numOperands = 2;
+                            ICPtr->operands[0] = base;
+                            ICPtr->operands[1] = newOperand();
+                            ICPtr->operands[1]->kind = OPEARND_VAR;
+                            ICPtr->operands[1]->info.varName = preOffset->baseName;
+                            // ICPtr->operands[1]->baseName = preOffset->baseName;
+                            ICPtr->kind = IC_GET_ADDR;//base := & x
+                            appendInterCodeToList(ICPtr);
+                        }
+                        else{
+                            //参数数组，已经是地址了，用一个多余的赋值操作
+                            ICPtr = newICNode(-1);
+                            ICPtr->numOperands = 2;
+                            ICPtr->operands[0] = base;
+                            ICPtr->operands[1] = newOperand();
+                            ICPtr->operands[1]->kind = OPEARND_VAR;
+                            ICPtr->operands[1]->info.varName = preOffset->baseName;
+                            ICPtr->kind = IC_ASSIGN;//base :=  x，形式参数本来就是地址
+                            appendInterCodeToList(ICPtr);
+                        }
                         //现在base对应的变量保存了基地址，加上偏移量
                         if(needGetValue == 0)
                         {
