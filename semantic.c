@@ -1212,7 +1212,7 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
         }
         else if(r->children[0]->type == Node_LP){
             //Exp -> LP Exp RP
-           return handleExp(r->children[1], NULL,  0);
+           return handleExp(r->children[1], place, needGetValue);
         }
         else if(r->children[1]->type == Node_LP){
             //Exp -> ID LP RP
@@ -1299,18 +1299,55 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
             else{
                 //函数定义了，判断参数是否符合
                 //先得到Args:FL,只有type重要,name不需要
-                struct FieldList* FL = handleArgs(r->children[2]);
+                //对于LAB#，要将args里面的每一个exp都计算出来放到临时变量中。注意，arg可以有地址
+                //对于数组，只能传递一维数组，用argList链表表示。注意逆序。ARG中间代码不是再hadleArgs的过程中生成
+                struct ArgNode* argList = NULL;
+                struct FieldList* FL = handleArgs(r->children[2], &argList);
                 if(checkFieldListSame(funcPtr->params,FL)){
                     if(strcmp(r->children[0]->idName, "write") == 0){
                         //把第一个参数exp的值放到一个局部变量
-                        struct Operand * tmp = getNewTmpVar();
-                        handleExp(r->children[2]->children[0], tmp, 1);
+                        assert((argList != NULL) && (argList->op != NULL));
+                        struct Operand * tmp = argList->op;
                         assert(tmp->kind == OPEARND_TMP_VAR);
                         struct InterCode * ICPtr = newICNode(-1);
                         ICPtr->numOperands = 1;
-                        ICPtr->operands[0] = tmp;
+                        ICPtr->operands[0] = argList->op;
                         ICPtr->kind = IC_WRITE;
                         appendInterCodeToList(ICPtr);
+                    }
+                    else{
+                        //普通函数，把argList中的一个个顺序加入ICList，最后place : call f
+                        //对于每个实参，有两种可能 
+                        //1. exp是一个值，存在了临时变量op中
+                        //2. exp是一个一维数组，还有两种可能
+                        //(1). 这个数组是局部变量，需要进行&操作得到数组首地址放到临时变量中再ARG 
+                        //(2). 这个数组是形参传下来的，EXP解析的时候，类型也是ARRAY。要检查是哪一种，如果是形参，就直接把形参对应的变量名作为这里的实参
+                        //但是以上都由printICPtr处理
+                        assert(argList != NULL);
+                        struct ArgNode* curArg = argList;
+                        struct InterCode * INPtr = NULL;
+                        do
+                        {
+                            INPtr = newICNode(-1);
+                            INPtr->kind = IC_ARG;
+                            INPtr->numOperands = 1;
+                            INPtr->operands[0] = curArg->op;
+                            appendInterCodeToList(INPtr);
+                            curArg = curArg->next;
+                        } while (curArg != argList);
+                        //还有一个call
+                        if(place != NULL){
+                            INPtr = newICNode(-1);
+                            INPtr->numOperands = 2;
+                            INPtr->operands[0] = place;
+                            struct Operand * op =newOperand();
+                            op->kind = OPERAND_FUNC;
+                            op->info.funcName = r->children[0]->idName;
+                            INPtr->operands[1] = op;
+                            INPtr->kind = IC_CALL;
+                            appendInterCodeToList(INPtr);
+                        }
+                        
                     }
                     return funcPtr->retType;//返回的是函数返回类型
                 }
@@ -1451,25 +1488,54 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
     }
 }
 
-struct FieldList* handleArgs(struct TreeNode* r){
+struct FieldList* handleArgs(struct TreeNode* r, struct ArgNode** argList){
     assert(r->type == Node_Args);
     if(r->numChildren == 1){
+        struct Operand* op = getNewTmpVar();
+        struct ArgNode* curNode = (struct ArgNode*)malloc(sizeof(struct ArgNode));
+        curNode->op = op;
         //Args -> Exp
         struct FieldList* FL = (struct FieldList*)malloc(sizeof(struct FieldList));
         FL->name = NULL;
-        FL->type = handleExp(r->children[0], NULL,  0);
+        FL->type = handleExp(r->children[0], op , 1);//实参的值对应了一个临时变量，一维数组元素需要计算
         FL->line = r->children[0]->line;
         FL->next = NULL;
+        //curNode连接到最后成环
+        if((*argList) == NULL){
+            (*argList) = curNode;
+            curNode->next = curNode->prev = curNode;
+        }
+        else{
+            (*argList)->prev->next = curNode;
+            curNode->prev = (*argList)->prev;
+            curNode->next = (*argList);
+            (*argList)->prev = curNode;
+        }
         return FL;
     }
     else{
         //Args -> Exp Comma Args
+        struct Operand* op = getNewTmpVar();
+        struct ArgNode* curNode = (struct ArgNode*)malloc(sizeof(struct ArgNode));
+        curNode->op = op;
+
         struct FieldList* FL1 = (struct FieldList*)malloc(sizeof(struct FieldList));
-        FL1->type =  handleExp(r->children[0], NULL,  0);//单个
+        FL1->type =  handleExp(r->children[0], op, 1);//单个
         FL1->name = NULL;
         FL1->line = r->children[1]->line;
-        struct FieldList* FL2 = handleArgs(r->children[2]);
+        struct FieldList* FL2 = handleArgs(r->children[2], argList);
         FL1->next = FL2;
+
+        if((*argList) == NULL){
+            (*argList) = curNode;
+            curNode->next = curNode->prev = curNode;
+        }
+        else{
+            (*argList)->prev->next = curNode;
+            curNode->prev = (*argList)->prev;
+            curNode->next = (*argList);
+            (*argList)->prev = curNode;
+        }
         return FL1;//连上
     }
 }
@@ -1621,6 +1687,42 @@ void printICPtr(FILE* fd, struct InterCode * curPtr){
             fprintf(fd, "WRITE ");
             printOperand(fd, curPtr->operands[0]);
             fprintf(fd, "\n");
+        }break;
+        case IC_ARG:{
+            assert((curPtr->numOperands == 1));
+            //实参有两种类型: 1.普通表达式，值已经存在op对应的临时变量中
+            //2. 一维数组Addr。分为从形参得到的数组和局部变量
+            struct Operand * op = curPtr->operands[0];
+            fprintf(fd, "ARG ");
+            if(op->kind == OPEARND_TMP_VAR){
+                printOperand(fd, op);
+                fprintf(fd, "\n");
+            }
+            else if(op->kind == OPEARND_ADDR){
+                //考虑他引用的对象
+                struct Variable * varPtr = searchVariableTable(op->baseName);
+                if(varPtr->isParam == 1){
+                    //这是形式参数，那么baseName变量的值就是数组首地址
+                    fprintf(fd, "%s\n", op->baseName);
+                }
+                else{
+                    //这是局部数组变量，要进行取地址操作
+                    fprintf(fd, "&%s\n", op->baseName);
+                }
+            }
+            else
+            {
+                assert(0);
+            }
+            
+        }break;
+        case IC_CALL:{
+            assert((curPtr->numOperands == 2));
+            //返回值存到一个临时变量
+            assert(curPtr->operands[0]->kind == OPEARND_TMP_VAR);
+            assert(curPtr->operands[1]->kind == OPERAND_FUNC);
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, " := CALL %s\n", curPtr->operands[1]->info.funcName);
         }break;
         default:
             break;

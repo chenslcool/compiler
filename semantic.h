@@ -132,6 +132,14 @@ struct InterCode
     struct InterCode* prev;
 };
 
+//函数实参链表节点
+struct ArgNode
+{
+    struct Operand* op;
+    struct ArgNode* next;
+    struct ArgNode* prev;
+};
+
 
 struct NameNode** getNameHashSet(int sz);
 int nameSetContains(struct NameNode** set,int sz,char* name);
@@ -222,7 +230,7 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr);
 
 struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVal);
 
-struct FieldList* handleArgs(struct TreeNode* r);
+struct FieldList* handleArgs(struct TreeNode* r, struct ArgNode** argList);
 
 void appendInterCodeToList(struct InterCode* ICNodePtr);
 
