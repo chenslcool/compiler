@@ -114,7 +114,7 @@ struct InterCode
         IC_GET_ADDR,
         IC_GET_VALUE,
         IC_WRITE_TO_ADDR,
-        IC_DOTO,
+        IC_GOTO,
         IC_RELOP_GOTO,
         IC_RETURN,
         IC_DEC,
@@ -125,7 +125,15 @@ struct InterCode
         IC_WRITE
     }kind;
     struct Operand* operands[3];//最多3个操作数
-    int Relop;//具体表明relop类型
+    // int Relop;//具体表明relop类型
+    enum{
+        LT,//<
+        GT,//>
+        LEQ,//<=
+        GEQ,//>=
+        NEQ,//!=
+        EQ//==
+    }relop;
     int allocSize;//用于DEC
     int numOperands;//操作数数量
     struct InterCode* next;
@@ -231,6 +239,8 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr);
 struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVal);
 
 struct FieldList* handleArgs(struct TreeNode* r, struct ArgNode** argList);
+
+struct Type * translateCond(struct TreeNode* r, struct Operand* labelTrue, struct Operand* labelFalse);
 
 void appendInterCodeToList(struct InterCode* ICNodePtr);
 

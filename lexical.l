@@ -44,6 +44,9 @@ badInteger {badDecimal}|{badOctal}|{badHexical}
 {relop} {
 	preIsExp = 0;
     preSetYylval(Node_RELOP);
+    //具体类型也要保存
+    yylval.node->idName = (char*)malloc(sizeof(char)*(yyleng+1));
+    memcpy(yylval.node->idName,yytext,sizeof(char)*(yyleng+1));
     return RELOP;
 }
 "=" {

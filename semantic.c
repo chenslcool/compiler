@@ -1010,8 +1010,45 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
     else if(r->numChildren == 2){
         if(r->children[0]->type == Node_NOT){
             //Exp -> Not Exp
+            struct Operand * L1 = getNewLabel();
+            struct Operand * L2 = getNewLabel();
+            struct Operand * const0 = newOperand();
+            const0->kind = OPEARND_CONSTANT;
+            const0->info.constantVal = 0;
+            struct InterCode * ICPtr =  newICNode(-1);
+            ICPtr->numOperands = 2;
+            ICPtr->operands[0] = place;
+            ICPtr->operands[1] = const0;
+            ICPtr->kind = IC_ASSIGN;
+            appendInterCodeToList(ICPtr);
+
+            //中间是Cond翻译
+            struct Type * typePtr = translateCond(r, L1, L2);
+
+            ICPtr =  newICNode(-1);
+            ICPtr->kind = IC_LABEL_DEF;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L1;
+            appendInterCodeToList(ICPtr);
+
+            struct Operand * const1 = newOperand();
+            const1->kind = OPEARND_CONSTANT;
+            const1->info.constantVal = 1;
+            ICPtr =  newICNode(-1);
+            ICPtr->numOperands = 2;
+            ICPtr->operands[0] = place;
+            ICPtr->operands[1] = const1;
+            ICPtr->kind = IC_ASSIGN;
+            appendInterCodeToList(ICPtr);
+
+            ICPtr =  newICNode(-1);
+            ICPtr->kind = IC_LABEL_DEF;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L2;
+            appendInterCodeToList(ICPtr);
+
             //判断Exp 是不是NULL或者basic类型
-            struct Type * typePtr = handleExp(r->children[1], NULL,  0);//有可能得到NULL
+            // struct Type * typePtr = handleExp(r->children[1], NULL,  0);//有可能得到NULL
             if((typePtr == NULL) || (typePtr->kind != BASIC) ){
                 //操作数类型不匹配,Not只能跟基本类型INT或者FLoat(我用C语言试了)
                 printError(7,r->children[0]->line,"Variable(s) type mismatch.");
@@ -1117,63 +1154,103 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
             }
             
         }
-        else if(r->children[1]->type == Node_AND){
+        else if((r->children[1]->type == Node_AND) || (r->children[1]->type == Node_OR) || (r->children[1]->type == Node_RELOP)){
             //Exp -> Exp Assign Exp
-            struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
-            struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
-            if((typePtr1 == NULL)||(typePtr2 == NULL)){
-                //如果有一个是NULL,说明之前已经错了，这里就不报错了
-                return NULL;
-            }
-            //BASIC才能AND
-            if((checkTypeSame(typePtr1,typePtr2) == 1) && ((typePtr1->kind == BASIC))){
-                return typePtr1;
-            }
-            else{
-                //操作数不匹配
-                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
-                return NULL;//不能赋值就返回NULL
-            }
+            struct Operand * L1 = getNewLabel();
+            struct Operand * L2 = getNewLabel();
+            struct Operand * const0 = newOperand();
+            const0->kind = OPEARND_CONSTANT;
+            const0->info.constantVal = 0;
+            struct InterCode * ICPtr =  newICNode(-1);
+            ICPtr->numOperands = 2;
+            ICPtr->operands[0] = place;
+            ICPtr->operands[1] = const0;
+            ICPtr->kind = IC_ASSIGN;
+            appendInterCodeToList(ICPtr);
+
+            //中间是Cond翻译
+            struct Type * curType = translateCond(r, L1, L2);
+
+            ICPtr =  newICNode(-1);
+            ICPtr->kind = IC_LABEL_DEF;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L1;
+            appendInterCodeToList(ICPtr);
+
+            struct Operand * const1 = newOperand();
+            const1->kind = OPEARND_CONSTANT;
+            const1->info.constantVal = 1;
+            ICPtr =  newICNode(-1);
+            ICPtr->numOperands = 2;
+            ICPtr->operands[0] = place;
+            ICPtr->operands[1] = const1;
+            ICPtr->kind = IC_ASSIGN;
+            appendInterCodeToList(ICPtr);
+
+            ICPtr =  newICNode(-1);
+            ICPtr->kind = IC_LABEL_DEF;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L2;
+            appendInterCodeToList(ICPtr);
+
+            return curType;
+
+            //旧的内容
+            // struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
+            // struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
+            // if((typePtr1 == NULL)||(typePtr2 == NULL)){
+            //     //如果有一个是NULL,说明之前已经错了，这里就不报错了
+            //     return NULL;
+            // }
+            // //BASIC才能AND
+            // if((checkTypeSame(typePtr1,typePtr2) == 1) && ((typePtr1->kind == BASIC))){
+            //     return typePtr1;
+            // }
+            // else{
+            //     //操作数不匹配
+            //     printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
+            //     return NULL;//不能赋值就返回NULL
+            // }
         }
-        else if(r->children[1]->type == Node_OR){
-            //Exp -> Exp OR Exp
-            struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
-            struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
-            if((typePtr1 == NULL)||(typePtr2 == NULL)){
-                //如果有一个是NULL,说明之前已经错了，这里就不报错了
-                return NULL;
-            }
-            //整数才能OR
-            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
-                return typePtr1;
-            }
-            else{
-                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
-                return NULL;//不能赋值就返回NULL
-            }
-        }
-        else if(r->children[1]->type == Node_RELOP){
-            //Exp -> Exp ReLop Exp
-            struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
-            struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
-            if((typePtr1 == NULL)||(typePtr2 == NULL)){
-                //如果有一个是NULL,说明之前已经错了，这里就不报错了
-                return NULL;
-            }
-            //基本类型才能RELOP
-            if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
-                // return typePtr1;
-                //RELOP类型是INT
-                struct Type * ptr = (struct Type *)malloc(sizeof(struct Type));
-                ptr->kind = BASIC;
-                ptr->info.basicType = TYPE_INT;
-                return ptr;//是INT类型
-            }
-            else{
-                printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
-                return NULL;//不能赋值就返回NULL
-            }
-        }
+        // else if(r->children[1]->type == Node_OR){
+        //     //Exp -> Exp OR Exp
+        //     struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
+        //     struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
+        //     if((typePtr1 == NULL)||(typePtr2 == NULL)){
+        //         //如果有一个是NULL,说明之前已经错了，这里就不报错了
+        //         return NULL;
+        //     }
+        //     //整数才能OR
+        //     if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
+        //         return typePtr1;
+        //     }
+        //     else{
+        //         printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
+        //         return NULL;//不能赋值就返回NULL
+        //     }
+        // }
+        // else if(r->children[1]->type == Node_RELOP){
+        //     //Exp -> Exp ReLop Exp
+        //     struct Type * typePtr1 = handleExp(r->children[0], NULL,  0);
+        //     struct Type * typePtr2 = handleExp(r->children[2], NULL,  0);
+        //     if((typePtr1 == NULL)||(typePtr2 == NULL)){
+        //         //如果有一个是NULL,说明之前已经错了，这里就不报错了
+        //         return NULL;
+        //     }
+        //     //基本类型才能RELOP
+        //     if(checkTypeSame(typePtr1,typePtr2) && ((typePtr1->kind == BASIC))){
+        //         // return typePtr1;
+        //         //RELOP类型是INT
+        //         struct Type * ptr = (struct Type *)malloc(sizeof(struct Type));
+        //         ptr->kind = BASIC;
+        //         ptr->info.basicType = TYPE_INT;
+        //         return ptr;//是INT类型
+        //     }
+        //     else{
+        //         printError(7,r->children[1]->line,"Oprand(s) or operator mismatch.");
+        //         return NULL;//不能赋值就返回NULL
+        //     }
+        // }
         else if((r->children[1]->type == Node_PLUS)||(r->children[1]->type == Node_MINUS)
         ||(r->children[1]->type == Node_STAR)||(r->children[1]->type == Node_DIV)){
             //Exp -> Exp Assign Exp
@@ -1497,6 +1574,111 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
     }
 }
 
+void setRelop(struct InterCode * ICPtr,char* relop){
+    if(strcmp(relop,"<") == 0){
+        ICPtr->relop = LT;
+    }
+    else if(strcmp(relop,"<=") == 0){
+        ICPtr->relop = LEQ;
+    }
+    else if(strcmp(relop,">") == 0){
+        ICPtr->relop = GT;
+    }
+    else if(strcmp(relop,">=") == 0){
+        ICPtr->relop = GEQ;
+    }
+    else if(strcmp(relop,"!=") == 0){
+        ICPtr->relop = NEQ;
+    }
+    else if(strcmp(relop,"==") == 0){
+        ICPtr->relop = EQ;
+    }
+    else
+    {
+        assert(0);
+    }
+    
+}
+
+struct Type * translateCond(struct TreeNode* r, struct Operand* labelTrue, struct Operand* labelFalse){
+    //仍然要返回表达式类型
+    //r : Exp
+    assert(r->type == Node_Exp);
+    
+    if((r->numChildren == 3) && (r->children[1]->type == Node_RELOP)){
+        struct Operand * t1 = getNewTmpVar();
+        struct Operand * t2 = getNewTmpVar();
+        //计算两个表达式的值到临时变量t1 t2
+        struct Type * typePtr1 = handleExp(r->children[0], t1, 1);//code1
+        struct Type * typePtr2 = handleExp(r->children[2], t2, 1);//code2
+        assert(checkTypeSame(typePtr1, typePtr2) == 1);
+        //relop有6种
+        struct InterCode * ICPtr =  newICNode(-1);
+        ICPtr->kind = IC_RELOP_GOTO;
+        ICPtr->numOperands = 3;
+        ICPtr->operands[0] = t1;
+        ICPtr->operands[1] = t2;
+        ICPtr->operands[2] = labelTrue;
+        setRelop(ICPtr, r->children[1]->idName);
+        appendInterCodeToList(ICPtr);//code3
+        
+        //无条件跳转到false
+        ICPtr =  newICNode(-1);
+        ICPtr->kind = IC_GOTO;
+        ICPtr->numOperands = 1;
+        ICPtr->operands[0] = labelFalse;
+        appendInterCodeToList(ICPtr);
+    }
+    else if((r->numChildren == 3) && ((r->children[1]->type == Node_AND) || (r->children[1]->type == Node_OR))){
+        struct Operand * L1 = getNewLabel();
+        struct InterCode * ICPtr = newICNode(-1);
+        ICPtr->kind = IC_LABEL_DEF;
+        ICPtr->numOperands = 1;
+        ICPtr->operands[0] = L1;
+
+        struct Type * typePtr1 = NULL;
+        struct Type * typePtr2 = NULL;
+        if(r->children[1]->type == Node_AND){
+            typePtr1 = translateCond(r->children[0], L1, labelFalse);
+            appendInterCodeToList(ICPtr);
+            typePtr2 = translateCond(r->children[2], labelTrue, labelFalse);
+        }
+        else{
+            typePtr1 = translateCond(r->children[0], labelTrue, L1);
+            appendInterCodeToList(ICPtr);
+            typePtr2 = translateCond(r->children[2], labelTrue, labelFalse);
+        }
+        assert(checkTypeSame(typePtr1, typePtr2) == 1);
+        return typePtr1;
+    }
+    else if((r->numChildren == 2) && (r->children[0]->type == Node_NEGETIVE)){
+        return translateCond(r->children[1], labelFalse, labelTrue);
+    }
+    else{
+        //普通表达式
+        struct Operand * tmp = getNewTmpVar();
+        struct Type * retTypePtr = handleExp(r, tmp, 1);//code1
+        //现在exp的值存在了tmp中
+        struct InterCode * ICPtr = newICNode(-1);
+        ICPtr->numOperands = 3;
+        ICPtr->kind = IC_RELOP_GOTO;
+        ICPtr->operands[0] = tmp;
+        ICPtr->relop = NEQ;
+        ICPtr->operands[1] = newOperand();
+        ICPtr->operands[1]->kind = OPEARND_CONSTANT;
+        ICPtr->operands[1]->info.constantVal = 0;
+        ICPtr->operands[2] = labelTrue;
+        appendInterCodeToList(ICPtr);//code2
+
+        ICPtr = newICNode(-1);
+        ICPtr->numOperands = 1;
+        ICPtr->kind = IC_GOTO;
+        ICPtr->operands[0] = labelFalse;
+        appendInterCodeToList(ICPtr);
+
+        return retTypePtr;
+    }
+}
 struct FieldList* handleArgs(struct TreeNode* r, struct ArgNode** argList){
     assert(r->type == Node_Args);
     if(r->numChildren == 1){
