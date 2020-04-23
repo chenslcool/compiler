@@ -875,7 +875,9 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr){
     }
     else if(r->numChildren == 2){
         //Stmt -> Exp Semi
-        handleExp(r->children[0], NULL,  0);//这个表达式的类型也不重要了
+        //还是接一下返回值，不然如果exp是函数，就不会执行了
+        struct Operand * op = getNewTmpVar();
+        handleExp(r->children[0], op,  0);//这个表达式的类型也不重要了
     }
     else if(r->numChildren == 3){
         //Stmt -> Return Exp Semi

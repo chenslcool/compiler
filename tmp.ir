@@ -1,55 +1,89 @@
-FUNCTION fib :
-PARAM n
-t0 := #1
-fib1 := t0
-t1 := #1
-fib2 := t1
-t2 := #0
-tmp := t2
-t3 := n
-t4 := #3
-IF t3 < t4 GOTO L0
-GOTO L1 
+FUNCTION add :
+PARAM temp
+t4 := #0
+t3 := #0
+t5 := t3 * #4
+t6 := t4 + t5
+t7 := temp
+t8 := t7 + t6
+t1 := *t8
+t10 := #0
+t9 := #1
+t11 := t9 * #4
+t12 := t10 + t11
+t13 := temp
+t14 := t13 + t12
+t2 := *t14
+t0 := t1 + t2
+RETURN t0
+FUNCTION main :
+DEC op 40
+DEC r 40
+t15 := #0
+i := t15
+t16 := #0
+j := t16
 LABEL L0 :
-t5 := #1
-RETURN t5
+t17 := i
+t18 := #10
+IF t17 < t18 GOTO L1
 GOTO L2 
 LABEL L1 :
-t8 := n
-t9 := #2
-t7 := t8 - t9
-n := t7
 LABEL L3 :
-t10 := n
-t11 := #0
-IF t10 > t11 GOTO L4
+t19 := j
+t20 := #10
+IF t19 < t20 GOTO L4
 GOTO L5 
 LABEL L4 :
-t14 := n
-t15 := #1
-t13 := t14 - t15
-n := t13
-t17 := fib2
-tmp := t17
-t20 := fib1
-t21 := fib2
-t19 := t20 + t21
-fib2 := t19
-t23 := tmp
-fib1 := t23
-t24 := fib2
-WRITE t24
+t24 := #0
+t23 := j
+t25 := t23 * #4
+t26 := t24 + t25
+t27 := &op
+t21 := t27 + t26
+t28 := i
+t29 := j
+t22 := t28 + t29
+*t21 := t22
+t32 := j
+t33 := #1
+t31 := t32 + t33
+j := t31
 GOTO L3 
 LABEL L5 :
-t25 := fib2
-RETURN t25
+t39 := #0
+t38 := #0
+t40 := t38 * #40
+t41 := t39 + t40
+t37 := t41
+t36 := i
+t42 := t36 * #4
+t43 := t37 + t42
+t44 := &r
+t34 := t44 + t43
+t45 := #0
+ARG &op
+t35 := CALL add
+*t34 := t35
+t50 := #0
+t49 := #0
+t51 := t49 * #40
+t52 := t50 + t51
+t48 := t52
+t47 := i
+t53 := t47 * #4
+t54 := t48 + t53
+t55 := &r
+t56 := t55 + t54
+t46 := *t56
+WRITE t46
+t59 := i
+t60 := #1
+t58 := t59 + t60
+i := t58
+t62 := #0
+j := t62
+GOTO L0 
 LABEL L2 :
-FUNCTION main :
-READ t27
-v1 := t27
-t30 := v1
-ARG t30
-t29 := CALL fib
-ret := t29
-t31 := #0
-RETURN t31
+t63 := #0
+RETURN t63
