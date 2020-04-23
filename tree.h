@@ -91,8 +91,6 @@ struct TreeNode
     struct TreeNode** children;//需要动态分配
     int line;//第一次出现的行号，依赖于children[0]的line
     int lastLine;
-    union Attr synAttr;//综合属性
-    union Attr inhAttr;//继承属性
 };
 
 //判断r是否为词法单元
