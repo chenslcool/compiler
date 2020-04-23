@@ -898,24 +898,110 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr){
     else if(r->numChildren == 5){
         if(r->children[0]->type == Node_IF){
             //Stmt -> If LP Exp RP Stmt
-            struct Type * expTypePtr = handleExp(r->children[2], NULL,  0);
-            //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
-            handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
+            //OLD LAB2 CODE
+            // struct Type * expTypePtr = handleExp(r->children[2], NULL,  0);
+            // handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
+            //NEW LAB3 code
+            struct Operand * L1 = getNewLabel();
+            struct Operand * L2 = getNewLabel();
+            struct InterCode * ICPtr = newICNode(-1);
+            ICPtr->kind = IC_LABEL_DEF;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L1;
+
+            translateCond(r->children[2], L1, L2);//code1
+            
+            appendInterCodeToList(ICPtr);//L1
+            
+            handleStmt(r->children[4], typePtr);//code2
+            ICPtr = newICNode(-1);
+            ICPtr->kind = IC_LABEL_DEF;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L2;
+            appendInterCodeToList(ICPtr);//L2
         }
         else{
             //和IF 一样的......
             //Stmt -> while LP Exp RP Stmt
-            struct Type * expTypePtr = handleExp(r->children[2], NULL,  0);
-            //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
-            handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
+            // struct Type * expTypePtr = handleExp(r->children[2], NULL,  0);
+            // //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
+            // handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
+
+            //NEW code
+            struct Operand * L1 = getNewLabel();
+            struct Operand * L2 = getNewLabel();
+            struct Operand * L3 = getNewLabel();
+            struct InterCode * ICPtr = newICNode(-1);
+            ICPtr->kind = IC_LABEL_DEF;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L1;
+            
+            appendInterCodeToList(ICPtr);//L1
+
+            translateCond(r->children[2], L2, L3);//code1
+            
+            ICPtr = newICNode(-1);
+            ICPtr->kind = IC_LABEL_DEF;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L2;
+            appendInterCodeToList(ICPtr);//L2
+
+            handleStmt(r->children[4], typePtr);//code2
+            
+            ICPtr = newICNode(-1);
+            ICPtr->kind = IC_GOTO;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L1;
+            appendInterCodeToList(ICPtr);//GOTO L1 再次判断
+
+            ICPtr = newICNode(-1);
+            ICPtr->kind = IC_LABEL_DEF;
+            ICPtr->numOperands = 1;
+            ICPtr->operands[0] = L3;
+            appendInterCodeToList(ICPtr);//L3
         }
     }
     else{
         //Stmt -> If LP Exp RP Stmt else Stmt
-        struct Type * expTypePtr = handleExp(r->children[2], NULL,  0);
-        //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
-        handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
-        handleStmt(r->children[6],typePtr);//返回值留给Stmt判断
+        // struct Type * expTypePtr = handleExp(r->children[2], NULL,  0);
+        // //TODO 判断exp的类型是不是INT,但是老师说不考虑，不管
+        // handleStmt(r->children[4],typePtr);//返回值留给Stmt判断
+        // handleStmt(r->children[6],typePtr);//返回值留给Stmt判断
+
+        //NEW code
+        struct Operand * L1 = getNewLabel();
+        struct Operand * L2 = getNewLabel();
+        struct Operand * L3 = getNewLabel();
+        struct InterCode * ICPtr = newICNode(-1);
+        ICPtr->kind = IC_LABEL_DEF;
+        ICPtr->numOperands = 1;
+        ICPtr->operands[0] = L1;
+
+        translateCond(r->children[3], L1, L2);//code1
+        
+        appendInterCodeToList(ICPtr);//L1
+
+        handleStmt(r->children[4], typePtr);//code2
+
+        ICPtr = newICNode(-1);
+        ICPtr->kind = IC_GOTO;
+        ICPtr->numOperands = 1;
+        ICPtr->operands[0] = L3;
+        appendInterCodeToList(ICPtr);//GOTO L3
+
+        ICPtr = newICNode(-1);
+        ICPtr->kind = IC_LABEL_DEF;
+        ICPtr->numOperands = 1;
+        ICPtr->operands[0] = L2;
+        appendInterCodeToList(ICPtr);//L2
+
+        handleStmt(r->children[6], typePtr);
+        
+        ICPtr = newICNode(-1);
+        ICPtr->kind = IC_LABEL_DEF;
+        ICPtr->numOperands = 1;
+        ICPtr->operands[0] = L3;
+        appendInterCodeToList(ICPtr);//L3
     }
 }
 
