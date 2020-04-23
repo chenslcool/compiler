@@ -1571,14 +1571,18 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
                         }
                         else{
                             //参数数组，已经是地址了，用一个多余的赋值操作
-                            ICPtr = newICNode(-1);
-                            ICPtr->numOperands = 2;
-                            ICPtr->operands[0] = base;
-                            ICPtr->operands[1] = newOperand();
-                            ICPtr->operands[1]->kind = OPEARND_VAR;
-                            ICPtr->operands[1]->info.varName = preOffset->baseName;
-                            ICPtr->kind = IC_ASSIGN;//base :=  x，形式参数本来就是地址
-                            appendInterCodeToList(ICPtr);
+                            // ICPtr = newICNode(-1);
+                            // ICPtr->numOperands = 2;
+                            // ICPtr->operands[0] = base;
+                            // ICPtr->operands[1] = newOperand();
+                            // ICPtr->operands[1]->kind = OPEARND_VAR;
+                            // ICPtr->operands[1]->info.varName = preOffset->baseName;
+                            // ICPtr->kind = IC_ASSIGN;//base :=  x，形式参数本来就是地址
+                            // appendInterCodeToList(ICPtr);
+                            //对于参数数组，已经是地址信息了，直接改base
+                            nrTmpVar--;
+                            base->kind = OPEARND_VAR;
+                            base->info.varName = preOffset->baseName;
                         }
                         //现在base对应的变量保存了基地址，加上偏移量
                         if(needGetValue == 0)
@@ -1588,7 +1592,7 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
                             ICPtr->operands[0] = place;
                             place->baseName = preOffset->baseName;
                             place->kind = OPEARND_ADDR;
-                            ICPtr->operands[1] = base;//tmpVar
+                            ICPtr->operands[1] = base;//tmpVar 或者 Var
                             ICPtr->operands[2] = sumOffset;//tmpVar
                             ICPtr->kind = IC_PLUS;
                             appendInterCodeToList(ICPtr);
