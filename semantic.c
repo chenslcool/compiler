@@ -977,7 +977,7 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr){
         ICPtr->numOperands = 1;
         ICPtr->operands[0] = L1;
 
-        translateCond(r->children[3], L1, L2);//code1
+        translateCond(r->children[2], L1, L2);//code1
         
         appendInterCodeToList(ICPtr);//L1
 
@@ -996,7 +996,7 @@ void handleStmt(struct TreeNode* r,struct Type * typePtr){
         appendInterCodeToList(ICPtr);//L2
 
         handleStmt(r->children[6], typePtr);
-        
+
         ICPtr = newICNode(-1);
         ICPtr->kind = IC_LABEL_DEF;
         ICPtr->numOperands = 1;
@@ -2001,7 +2001,55 @@ void printICPtr(FILE* fd, struct InterCode * curPtr){
             printOperand(fd, curPtr->operands[0]);
             fprintf(fd, " := CALL %s\n", curPtr->operands[1]->info.funcName);
         }break;
+        case IC_RELOP_GOTO:{
+            assert(curPtr->numOperands == 3);
+            fprintf(fd, "IF ");
+            printOperand(fd, curPtr->operands[0]);
+            switch (curPtr->relop)
+            {
+                case LT:{
+                    fprintf(fd, " < ");
+                }break;
+                case LEQ:{
+                    fprintf(fd, " <= ");
+                }break;
+                case GT:{
+                    fprintf(fd, " > ");
+                }break;
+                case GEQ:{
+                    fprintf(fd, " >= ");
+                }break;
+                case NEQ:{
+                    fprintf(fd, " != ");
+                }break;
+                case EQ:{
+                    fprintf(fd, " == ");
+                }break;
+                default:{
+                    assert(0);
+                }break;
+            }
+            printOperand(fd, curPtr->operands[1]);
+            fprintf(fd, " GOTO ");
+            assert(curPtr->operands[2]->kind == OPERAND_LABEL);
+            printOperand(fd, curPtr->operands[2]);
+            fprintf(fd, "\n");
+        }break;
+        case IC_LABEL_DEF:{
+            assert(curPtr->numOperands == 1);
+            assert(curPtr->operands[0]->kind == OPERAND_LABEL);
+            fprintf(fd, "LABEL ");
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, " :\n");
+        }break;
+        case IC_GOTO:{
+            assert(curPtr->numOperands == 1);
+            fprintf(fd, "GOTO ");
+            printOperand(fd, curPtr->operands[0]);
+            fprintf(fd, " \n");
+        }break;
         default:
+            fprintf(stderr, "printICPtr() need fix!\n");
             break;
         }
 }
@@ -2037,6 +2085,9 @@ void printOperand(FILE* fd, struct Operand* op){
     }break;
     case OPEARND_CONSTANT:{
         fprintf(fd, "#%d", op->info.constantVal);
+    }break;
+    case OPERAND_LABEL:{
+        fprintf(fd, "L%d", op->info.laeblNo);
     }break;
     default:
         assert(0);
