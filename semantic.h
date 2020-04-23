@@ -226,7 +226,7 @@ struct FieldList* handleVarDec2(struct TreeNode* r,struct Type * typePtr);
 
 struct Func* handleFuncDec(struct TreeNode* r,struct Type * typePtr);
 
-struct FieldList* handleVarList(struct TreeNode* r);
+struct FieldList* handleVarList(struct TreeNode* r); 
 
 struct FieldList* handleParamDec(struct TreeNode* r);
 
