@@ -1047,17 +1047,25 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
                         //数组的话，ID应该已经在中间代码DEC过了。
                         //记录偏移量和base
                         struct InterCode * ICPtr = newICNode(-1);
-                        ICPtr->kind = IC_ASSIGN;//x := 0，最后一步才是加上&base和加上偏移量
-                        struct Operand* opPtr1 = newOperand();
-                        opPtr1->kind = OPEARND_CONSTANT;//常数
-                        opPtr1->info.constantVal = 0;
-                        place->kind = OPEARND_ADDR;//place对应中间代码变量ti已经确定了
-                        place->baseName = varPtr->name;
-                        ICPtr->operands[0] = place;
-                        ICPtr->operands[1] = opPtr1;
-                        ICPtr->numOperands = 2;
-                        //目前place->info.address.vartmpno只是偏移量
-                        appendInterCodeToList(ICPtr);
+                        if(searchVariableTable(varPtr->name)->isParam == 0){
+                            //局部数组要取地址
+                            ICPtr = newICNode(-1);
+                            ICPtr->numOperands = 2;
+                            ICPtr->operands[0] = place;
+                            ICPtr->operands[1] = newOperand();
+                            ICPtr->operands[1]->kind = OPEARND_VAR;
+                            ICPtr->operands[1]->info.varName = varPtr->name;
+                            place->kind = OPEARND_ADDR;
+                            // ICPtr->operands[1]->baseName = preOffset->baseName;
+                            ICPtr->kind = IC_GET_ADDR;//place := & x
+                            appendInterCodeToList(ICPtr);
+                        }
+                        else{
+                            //直接把参数数组值作为place
+                            place->kind = OPEARND_VAR;//place := x
+                            place->info.varName = varPtr->name;
+                            appendInterCodeToList(ICPtr);
+                        }
                     }
                     else
                     {
@@ -1522,11 +1530,16 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
             struct Operand *tmpIdx = getNewTmpVar();
             struct Operand *preOffset = getNewTmpVar();
             struct Type * typePtr1 = handleExp((r->children[0]), preOffset,  0);//将preOffset设置好
+            if(preOffset->kind != OPEARND_TMP_VAR && preOffset->kind != OPEARND_ADDR){
+                //有可能是VAR
+                --nrTmpVar;
+            }
+
             struct Type * typePtr2 = handleExp((r->children[2]), tmpIdx,  1);//得到下标值
             //1应该是array,2是INT
             if((typePtr1 != NULL)&&(typePtr1->kind==ARRAY)&&(typePtr2 != NULL)
                 &&(typePtr2->kind==BASIC)&&(typePtr2->info.basicType == TYPE_INT)){
-                    assert(preOffset->kind == OPEARND_ADDR);
+                    // assert(preOffset->kind == OPEARND_ADDR);
 
                     //要新建一个临时变量计算新的偏移量
                     //先计算要加上的偏移量，用idx*width得到
@@ -1547,88 +1560,39 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
                     ICPtr = newICNode(-1);
                     ICPtr->numOperands = 3;
                     ICPtr->operands[0] = sumOffset;
-                    ICPtr->operands[1] = preOffset;//ADDR类型
+                    ICPtr->operands[1] = preOffset;//ADDR或者VAR类型
                     ICPtr->operands[2] = addOffset;
                     ICPtr->kind = IC_PLUS;
                     appendInterCodeToList(ICPtr);
 
                     if(typePtr1->info.array->elem->kind != ARRAY){
-                        //当前是最后一个，还要进行&得到base以及+base到place
-                        //得到base到临时变量，根据是形参还是局部变觉得要不要&
-                        struct Operand * base = getNewTmpVar();
-
-                        if(searchVariableTable(preOffset->baseName)->isParam == 0){
-                            //局部数组要取地址
-                            ICPtr = newICNode(-1);
-                            ICPtr->numOperands = 2;
-                            ICPtr->operands[0] = base;
-                            ICPtr->operands[1] = newOperand();
-                            ICPtr->operands[1]->kind = OPEARND_VAR;
-                            ICPtr->operands[1]->info.varName = preOffset->baseName;
-                            // ICPtr->operands[1]->baseName = preOffset->baseName;
-                            ICPtr->kind = IC_GET_ADDR;//base := & x
-                            appendInterCodeToList(ICPtr);
-                        }
-                        else{
-                            //参数数组，已经是地址了，用一个多余的赋值操作
-                            // ICPtr = newICNode(-1);
-                            // ICPtr->numOperands = 2;
-                            // ICPtr->operands[0] = base;
-                            // ICPtr->operands[1] = newOperand();
-                            // ICPtr->operands[1]->kind = OPEARND_VAR;
-                            // ICPtr->operands[1]->info.varName = preOffset->baseName;
-                            // ICPtr->kind = IC_ASSIGN;//base :=  x，形式参数本来就是地址
-                            // appendInterCodeToList(ICPtr);
-                            //对于参数数组，已经是地址信息了，直接改base
-                            nrTmpVar--;
-                            base->kind = OPEARND_VAR;
-                            base->info.varName = preOffset->baseName;
-                        }
-                        //现在base对应的变量保存了基地址，加上偏移量
+                        //当前是最后一个，smuOffet已经是完全地址了
                         if(needGetValue == 0)
                         {
-                            ICPtr = newICNode(-1);
-                            ICPtr->numOperands = 3;
-                            ICPtr->operands[0] = place;
-                            place->baseName = preOffset->baseName;
                             place->kind = OPEARND_ADDR;
-                            ICPtr->operands[1] = base;//tmpVar 或者 Var
-                            ICPtr->operands[2] = sumOffset;//tmpVar
-                            ICPtr->kind = IC_PLUS;
-                            appendInterCodeToList(ICPtr);
+                            place->info.tmpVarNo = sumOffset->info.tmpVarNo;
                         }
                         else{
                             //取地址上的数值
                             ICPtr = newICNode(-1);
-                            ICPtr->numOperands = 3;
-                            struct Operand *absAddr = getNewTmpVar();
-                            ICPtr->operands[0] = absAddr;
-                            absAddr->baseName = preOffset->baseName;
-                            absAddr->kind = OPEARND_ADDR;
-                            ICPtr->operands[1] = base;//tmpVar
-                            ICPtr->operands[2] = sumOffset;//tmpVar
-                            ICPtr->kind = IC_PLUS;
-                            appendInterCodeToList(ICPtr);
-
-                            ICPtr = newICNode(-1);
                             ICPtr->numOperands = 2;
                             ICPtr->operands[0] = place;
-                            place->kind = OPEARND_TMP_VAR;
-                            ICPtr->operands[1] = absAddr;
+                            ICPtr->operands[1] = sumOffset;
                             ICPtr->kind = IC_GET_VALUE;
                             appendInterCodeToList(ICPtr);
                         }
                     }
                     else{
-                        //得到base到临时变量
-                        ICPtr = newICNode(-1);
-                        ICPtr->numOperands = 2;
-                        ICPtr->operands[0] = place;
-                        place->baseName = preOffset->baseName;
-                        place->kind = OPEARND_ADDR;
-                        ICPtr->operands[1] = sumOffset;
-                        ICPtr->kind = IC_ASSIGN;
-                        appendInterCodeToList(ICPtr);
+                        //place
+                        // ICPtr = newICNode(-1);
+                        // ICPtr->numOperands = 2;
+                        // ICPtr->operands[0] = place;
+                        // place->baseName = preOffset->baseName;
+                        // place->kind = OPEARND_ADDR;
+                        // ICPtr->operands[1] = sumOffset;
+                        // ICPtr->kind = IC_ASSIGN;
+                        // appendInterCodeToList(ICPtr);
+                        place->info.tmpVarNo = sumOffset->info.tmpVarNo;
                     }
 
                     return typePtr1->info.array->elem;//返回上一层类型
