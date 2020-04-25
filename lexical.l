@@ -7,6 +7,7 @@
     int preIsExp = 0;//前面是否是表达式(表达式以 ),],ID,INT,FLOAT终结符结束)
     void preSetYylval(int type);
     extern int SyntaxError;
+    extern int containsStruct;//在词法层面检测struct的存在性(^-^)
 %}
 digit [0-9]
 digits {digit}+
@@ -148,6 +149,7 @@ badInteger {badDecimal}|{badOctal}|{badHexical}
     return RC;
 }
 "struct" {
+    containsStruct = 1;
 	preIsExp = 0;
     preSetYylval(Node_STRUCT);
     return STRUCT;

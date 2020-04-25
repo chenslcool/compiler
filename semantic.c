@@ -1747,7 +1747,7 @@ void appendInterCodeToList(struct InterCode* ICNodePtr){
     //ICNodePtr只是一个节点
     //for debug
     // ICNodePtr->next = ICNodePtr->prev = ICNodePtr;
-    printICPtr(stderr, ICNodePtr);
+    // printICPtr(stderr, ICNodePtr); //for debug
     if(InterCodeList == NULL){
         //初始情况
         InterCodeList = ICNodePtr;

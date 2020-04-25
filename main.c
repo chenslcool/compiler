@@ -5,26 +5,36 @@
 #include "syntax.tab.h"
 #include "semantic.h"
 int SyntaxError = 0;//bison检查到语义错误，在含error的产生式的语义动作中会设置它，给main()查看
+int containsStruct = 0;
 void yyrestart ( FILE *input_file  );
 int main(int argc,char** argv){
-    if(argc > 1){
-        FILE* f = fopen(argv[1],"r");
-        if(!f){
+    if(argc > 2){
+        FILE* fin = fopen(argv[1],"r");
+        FILE* fout = fopen(argv[2],"w");
+        if(!fin){
             perror(argv[1]);
             return 1; 
         }
-        yyrestart(f);
+        yyrestart(fin);
         #if YYDEBUG
             yydebug = 1;
         #endif
         yyparse();
         if(SyntaxError == 0){
             // preTraverse(root,0);
-            initReadAndWrite();
-            handleProgram(root);
+            if(containsStruct == 1){
+                fprintf(fout, "Cannot translate: Code contains variables or parameters of structure type.\n");
+            }
+            else{
+                initReadAndWrite();
+                handleProgram(root);
+                printInterCodeList(fout);
+            }
             // fprintf(stderr,"HashSize = %d,numHashSearch = %d\n",TABLE_SIZE,numHashSearch);
         }
-        printInterCodeList(stdout);
-        return 0;
     }
+    else{
+        printf("arguement not enough!\n");
+    }
+    return 0;
 }
