@@ -1896,24 +1896,9 @@ void printICPtr(FILE* fd, struct InterCode * curPtr){
             //2. 一维数组Addr。分为从形参得到的数组和局部变量
             struct Operand * op = curPtr->operands[0];
             fprintf(fd, "ARG ");
-            if(op->kind == OPEARND_ADDR){
-                //考虑他引用的对象
-                struct Variable * varPtr = searchVariableTable(op->baseName);
-                if(varPtr->isParam == 1){
-                    //这是形式参数，那么baseName变量的值就是数组首地址
-                    fprintf(fd, "%s\n", op->baseName);
-                }
-                else{
-                    //这是局部数组变量，要进行取地址操作
-                    fprintf(fd, "&%s\n", op->baseName);
-                }
-            }
-            else
-            {
-                //临时变量或普通变量或者常数
-                printOperand(fd, op);
-                fprintf(fd, "\n");
-            }
+            //临时变量或普通变量或者常数
+            printOperand(fd, op);
+            fprintf(fd, "\n");
             
         }break;
         case IC_CALL:{

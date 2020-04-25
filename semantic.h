@@ -97,7 +97,6 @@ struct Operand
         int tmpVarNo;//临时变量ID
         int constantVal;
     }info;
-    char* baseName;//引用的变量名，在数组翻译的时候用
 };
 
 //中间代码

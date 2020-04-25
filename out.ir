@@ -1,0 +1,9 @@
+FUNCTION f :
+PARAM a1
+RETURN #4
+FUNCTION main :
+DEC a2 8
+t1 := &a2
+ARG t1
+t2 := CALL f
+RETURN #0
