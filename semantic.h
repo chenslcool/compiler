@@ -254,7 +254,10 @@ struct Operand*  newOperand();
 struct Operand* getNewLabel();
 
 //获取新的临时变量
-struct Operand* getNewTmpVar();
+// struct Operand* getNewTmpVar();
+
+//获取下一个临时变量标号
+int getNextTmpNo();
 
 //打印中间代码
 void printInterCodeList(FILE* fd);
