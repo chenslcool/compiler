@@ -1634,6 +1634,7 @@ struct Type * translateCond(struct TreeNode* r, struct Operand* labelTrue, struc
         ICPtr->numOperands = 1;
         ICPtr->operands[0] = labelFalse;
         appendInterCodeToList(ICPtr);
+        return typePtr1;
     }
     else if((r->numChildren == 3) && ((r->children[1]->type == Node_AND) || (r->children[1]->type == Node_OR))){
         struct Operand * L1 = getNewLabel();
