@@ -10,7 +10,6 @@ void yyrestart ( FILE *input_file  );
 int main(int argc,char** argv){
     if(argc > 2){
         FILE* fin = fopen(argv[1],"r");
-        FILE* fout = fopen(argv[2],"w");
         if(!fin){
             perror(argv[1]);
             return 1; 
@@ -23,15 +22,18 @@ int main(int argc,char** argv){
         if(SyntaxError == 0){
             // preTraverse(root,0);
             if(containsStruct == 1){
-                fprintf(fout, "Cannot translate: Code contains variables or parameters of structure type.\n");
+                fprintf(stderr, "Cannot translate: Code contains variables or parameters of structure type.\n");
             }
             else{
+                FILE* fout = fopen(argv[2],"w");
                 initReadAndWrite();
                 handleProgram(root);
                 printInterCodeList(fout);
+                fclose(fout);
             }
             // fprintf(stderr,"HashSize = %d,numHashSearch = %d\n",TABLE_SIZE,numHashSearch);
         }
+        fclose(fin);
     }
     else{
         printf("arguement not enough!\n");
