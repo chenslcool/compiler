@@ -1,9 +1,21 @@
-FUNCTION f :
-PARAM a1
-RETURN #4
 FUNCTION main :
-DEC a2 8
-t1 := &a2
-ARG t1
-t2 := CALL f
+READ t0
+n := t0
+t1 := t0
+IF n > #0 GOTO L0
+GOTO L1 
+LABEL L0 :
+WRITE #1
+GOTO L2 
+LABEL L1 :
+IF n < #0 GOTO L3
+GOTO L4 
+LABEL L3 :
+t4 := #0 - #1
+WRITE t4
+GOTO L5 
+LABEL L4 :
+WRITE #0
+LABEL L5 :
+LABEL L2 :
 RETURN #0

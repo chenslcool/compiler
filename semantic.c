@@ -1358,20 +1358,20 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
             else{
                 //函数定义了，判断参数是否符合
                 if(checkFieldListSame(funcPtr->params,NULL)){
-                    //CALL TODO
+                    //CALL 
                     if(place != NULL){
-                            struct InterCode * INPtr = newICNode(-1);
-                            INPtr->numOperands = 2;
-                            INPtr->operands[0] = place;
-                            //返回值放在临时变量中
-                            place->kind = OPEARND_TMP_VAR;
-                            place->info.tmpVarNo = getNextTmpNo();
-                            struct Operand * op =newOperand();
-                            op->kind = OPERAND_FUNC;
-                            op->info.funcName = r->children[0]->idName;
-                            INPtr->operands[1] = op;
-                            INPtr->kind = IC_CALL;
-                            appendInterCodeToList(INPtr);
+                        struct InterCode * INPtr = newICNode(-1);
+                        INPtr->numOperands = 2;
+                        INPtr->operands[0] = place;
+                        //返回值放在临时变量中
+                        place->kind = OPEARND_TMP_VAR;
+                        place->info.tmpVarNo = getNextTmpNo();
+                        struct Operand * op =newOperand();
+                        op->kind = OPERAND_FUNC;
+                        op->info.funcName = r->children[0]->idName;
+                        INPtr->operands[1] = op;
+                        INPtr->kind = IC_CALL;
+                        appendInterCodeToList(INPtr);
                     }
                     return funcPtr->retType;//返回的是函数返回类型
                 }
@@ -1747,7 +1747,7 @@ void appendInterCodeToList(struct InterCode* ICNodePtr){
     //ICNodePtr只是一个节点
     //for debug
     // ICNodePtr->next = ICNodePtr->prev = ICNodePtr;
-    // printICPtr(stderr, ICNodePtr); //for debug
+    printICPtr(stderr, ICNodePtr); //for debug
     if(InterCodeList == NULL){
         //初始情况
         InterCodeList = ICNodePtr;
