@@ -526,6 +526,15 @@ struct FieldList* handleExtDecList(struct TreeNode* r,struct Type* typePtr){
         if(FL1->type->kind == ARRAY)
             reverseArray(FL1->type);
 
+        if((searchVariableTable(FL1->name) != NULL)||(searchStructureTable(FL1->name) != NULL)){
+            //错误3，变量名重复定义
+            printError(3,r->children[0]->line,"Variable name used before.");
+        }
+        else{
+            //可以定义这个变量
+            struct Variable* varPtr = getVarPtr(FL1,r->children[0]->line);
+            insertVariableTable(varPtr);
+        }
         //即使变量重定义了，还是存在于结果FL中
         struct FieldList* FL2 = handleExtDecList(r->children[2],typePtr);//>=0个节点
         FL1->next = FL2;
@@ -1747,7 +1756,7 @@ void appendInterCodeToList(struct InterCode* ICNodePtr){
     //ICNodePtr只是一个节点
     //for debug
     // ICNodePtr->next = ICNodePtr->prev = ICNodePtr;
-    printICPtr(stderr, ICNodePtr); //for debug
+    // printICPtr(stderr, ICNodePtr); //for debug
     if(InterCodeList == NULL){
         //初始情况
         InterCodeList = ICNodePtr;
