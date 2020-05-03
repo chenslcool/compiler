@@ -1206,31 +1206,125 @@ struct Type * handleExp(struct TreeNode* r, struct Operand* place, int needGetVa
             }
             if(checkTypeSame(typePtr1,typePtr2) == 1){//类型相同，非空
                 //生成赋值语句中间代码
-                struct InterCode * ICPtr = newICNode(-1);
-                ICPtr->numOperands = 2;
-                ICPtr->operands[0] = left;
-                ICPtr->operands[1] = right;
-                //right的类型可能是VAR、TMP_VAR和CONST
-                if(left->kind == OPEARND_ADDR){//是地址
-                    //*x := y
-                    ICPtr->kind = IC_WRITE_TO_ADDR;
+                //这里有可能是数组赋值
+                if(typePtr1->kind == ARRAY){
+                    //实际上不会发生
+                    // assert(0);
+                    int w1 = typePtr1->info.array->elemWidth;
+                    int n1 = typePtr1->info.array->numElem;
+                    int w2 = typePtr2->info.array->elemWidth;
+                    int n2 = typePtr2->info.array->numElem;
+                    int copySz = min(w1*n1, w2*n2);
+                    //逐元素复制 
+                    //left和right都是Addr类型。有可能是临时变量，也可能是数组变量
+                    //都先存到一个临时变量t1,t2中，之后每次递增t1,t2 = t1,t2 + 4
+                    struct Operand *t1 = newOperand();
+                    t1->kind = OPEARND_ADDR;
+                    t1->info.tmpVarNo = getNextTmpNo();
+                    struct Operand *t2 = newOperand();
+                    t2->kind = OPEARND_ADDR;
+                    t2->info.tmpVarNo = getNextTmpNo();
+                    
+                    //t1 := left                    
+                    struct InterCode * ICPtr = newICNode(-1);
+                    ICPtr->kind = IC_ASSIGN;
+                    ICPtr->numOperands = 2;
+                    ICPtr->operands[0] = t1;
+                    ICPtr->operands[1] = left;
+                    appendInterCodeToList(ICPtr);
+
+                    //t2 := right                   
+                    ICPtr = newICNode(-1);
+                    ICPtr->kind = IC_ASSIGN;
+                    ICPtr->numOperands = 2;
+                    ICPtr->operands[0] = t2;
+                    ICPtr->operands[1] = right;
+                    appendInterCodeToList(ICPtr);
+
+                    struct Operand * const4 = newOperand();
+                    const4->kind = OPEARND_CONSTANT;
+                    const4->info.constantVal = INT_FLOAT_SIZE;
+
+                    //临时变量存右侧地址取值的结果
+                    struct Operand * tmp = newOperand();
+                    tmp->kind = OPEARND_TMP_VAR;
+                    tmp->info.constantVal = getNextTmpNo();
+
+                    for(int i = 0;i < copySz/INT_FLOAT_SIZE;++i){
+                        //取右侧元素值
+                        ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 2;
+                        ICPtr->operands[0] = tmp;
+                        ICPtr->operands[1] = t2;
+                        ICPtr->kind = IC_GET_VALUE;
+                        appendInterCodeToList(ICPtr);
+
+                        //tmp复制给左侧
+                        ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 2;
+                        ICPtr->operands[0] = t1;
+                        ICPtr->operands[1] = tmp;
+                        ICPtr->kind = IC_WRITE_TO_ADDR;
+                        appendInterCodeToList(ICPtr);
+
+                        //t1,t2 += 4
+                        if(i != copySz/INT_FLOAT_SIZE - 1){
+                            ICPtr = newICNode(-1);
+                            ICPtr->kind = IC_PLUS;
+                            ICPtr->numOperands = 3;
+                            ICPtr->operands[0] = t1;
+                            ICPtr->operands[1] = t1;
+                            ICPtr->operands[2] = const4;
+                            appendInterCodeToList(ICPtr);
+
+                            ICPtr = newICNode(-1);
+                            ICPtr->kind = IC_PLUS;
+                            ICPtr->numOperands = 3;
+                            ICPtr->operands[0] = t2;
+                            ICPtr->operands[1] = t2;
+                            ICPtr->operands[2] = const4;
+                            appendInterCodeToList(ICPtr);
+                        }
+                    }
+                    if(place != NULL){
+                        //把赋值号左边的地址放在place中
+                        place->kind = OPEARND_TMP_VAR;//将EXP的结果放在一个临时变量中
+                        place->info.tmpVarNo = getNextTmpNo();
+                        ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 2;
+                        ICPtr->operands[0] = place;
+                        ICPtr->operands[1] = left;
+                        ICPtr->kind = IC_ASSIGN;
+                        appendInterCodeToList(ICPtr);
+                    }
                 }
                 else{
-                    //赋值号左侧是一个普通变量,直接赋值给变量
-                    ICPtr->kind = IC_ASSIGN;
-                }
-                appendInterCodeToList(ICPtr);
-                if(place != NULL){
-                    //给place赋值,这下=表达式的结果一定存在临时变量place中
-                    //对于stmt中的 EXp = ...语句，place是NULL，因为不需要取得EXP的值
-                    place->kind = OPEARND_TMP_VAR;//将EXP的结果放在一个临时变量中
-                    place->info.tmpVarNo = getNextTmpNo();
-                    ICPtr = newICNode(-1);
+                    struct InterCode * ICPtr = newICNode(-1);
                     ICPtr->numOperands = 2;
-                    ICPtr->operands[0] = place;
+                    ICPtr->operands[0] = left;
                     ICPtr->operands[1] = right;
-                    ICPtr->kind = IC_ASSIGN;
+                    //right的类型可能是VAR、TMP_VAR和CONST
+                    if(left->kind == OPEARND_ADDR){//是地址
+                        //*x := y
+                        ICPtr->kind = IC_WRITE_TO_ADDR;
+                    }
+                    else{
+                        //赋值号左侧是一个普通变量,直接赋值给变量
+                        ICPtr->kind = IC_ASSIGN;
+                    }
                     appendInterCodeToList(ICPtr);
+                    if(place != NULL){
+                        //给place赋值,这下=表达式的结果一定存在临时变量place中
+                        //对于stmt中的 EXp = ...语句，place是NULL，因为不需要取得EXP的值
+                        place->kind = OPEARND_TMP_VAR;//将EXP的结果放在一个临时变量中
+                        place->info.tmpVarNo = getNextTmpNo();
+                        ICPtr = newICNode(-1);
+                        ICPtr->numOperands = 2;
+                        ICPtr->operands[0] = place;
+                        ICPtr->operands[1] = right;
+                        ICPtr->kind = IC_ASSIGN;
+                        appendInterCodeToList(ICPtr);
+                    }
                 }
                 return typePtr1;
             }
@@ -2035,4 +2129,8 @@ void initReadAndWrite(){
 int getNextTmpNo(){
     //先返回后加
     return nrTmpVar++;
+}
+
+int min(int a,int b){
+    return a > b ? b : a;
 }

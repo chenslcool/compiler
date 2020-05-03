@@ -268,4 +268,6 @@ void printICPtr(FILE* fd, struct InterCode * curPtr);
 
 //向函数表插入read和write初始化
 void initReadAndWrite();
+
+int min(int a,int b);
 #endif

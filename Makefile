@@ -42,7 +42,7 @@ syntax-c: $(YFILE)
 # 定义的一些伪目标
 .PHONY: clean test
 test:
-	./parser ../Test/test1.cmm
+	./parser ../Test/test1.cmm out.ir
 test2:
 	./parser ../Test/test2.cmm out.ir
 clean:

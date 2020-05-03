@@ -1,21 +1,59 @@
 FUNCTION main :
-READ t0
-n := t0
-t1 := t0
-IF n > #0 GOTO L0
-GOTO L1 
+DEC a 32
+DEC b 48
+i := #0
 LABEL L0 :
-WRITE #1
+IF i < #4 GOTO L1
 GOTO L2 
 LABEL L1 :
-IF n < #0 GOTO L3
-GOTO L4 
+t0 := &a
+t1 := #1 * #16
+t2 := t0 + t1
+t3 := i * #4
+t4 := t2 + t3
+READ t5
+*t4 := t5
+t6 := t5
+t7 := i + #1
+i := t7
+t8 := t7
+GOTO L0 
+LABEL L2 :
+t9 := &b
+t10 := #2 * #12
+t11 := t9 + t10
+t12 := &a
+t13 := #1 * #16
+t14 := t12 + t13
+t15 := t11
+t16 := t14
+t17 := *t16
+*t15 := t17
+t15 := t15 + #4
+t16 := t16 + #4
+t17 := *t16
+*t15 := t17
+t15 := t15 + #4
+t16 := t16 + #4
+t17 := *t16
+*t15 := t17
+t18 := t11
+i := #0
+t19 := #0
 LABEL L3 :
-t4 := #0 - #1
-WRITE t4
+IF i < #2 GOTO L4
 GOTO L5 
 LABEL L4 :
-WRITE #0
+t21 := &b
+t22 := #2 * #12
+t23 := t21 + t22
+t24 := i * #4
+t25 := t23 + t24
+t26 := *t25
+WRITE t26
+t27 := i + #1
+i := t27
+t28 := t27
+GOTO L3 
 LABEL L5 :
-LABEL L2 :
 RETURN #0
