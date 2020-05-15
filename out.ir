@@ -1,59 +1,80 @@
-FUNCTION main :
-DEC a 32
-DEC b 48
+FUNCTION printArr :
+PARAM arr
 i := #0
+j := #0
 LABEL L0 :
-IF i < #4 GOTO L1
+IF i != #2 GOTO L1
 GOTO L2 
 LABEL L1 :
-t0 := &a
-t1 := #1 * #16
-t2 := t0 + t1
-t3 := i * #4
-t4 := t2 + t3
-READ t5
-*t4 := t5
-t6 := t5
-t7 := i + #1
-i := t7
-t8 := t7
-GOTO L0 
-LABEL L2 :
-t9 := &b
-t10 := #2 * #12
-t11 := t9 + t10
-t12 := &a
-t13 := #1 * #16
-t14 := t12 + t13
-t15 := t11
-t16 := t14
-t17 := *t16
-*t15 := t17
-t15 := t15 + #4
-t16 := t16 + #4
-t17 := *t16
-*t15 := t17
-t15 := t15 + #4
-t16 := t16 + #4
-t17 := *t16
-*t15 := t17
-t18 := t11
-i := #0
-t19 := #0
+j := #0
 LABEL L3 :
-IF i < #2 GOTO L4
+IF j != #10 GOTO L4
 GOTO L5 
 LABEL L4 :
-t21 := &b
-t22 := #2 * #12
-t23 := t21 + t22
-t24 := i * #4
-t25 := t23 + t24
-t26 := *t25
-WRITE t26
-t27 := i + #1
-i := t27
-t28 := t27
+t1 := i * #40
+t2 := arr + t1
+t3 := j * #4
+t4 := t2 + t3
+t5 := *t4
+WRITE t5
+t6 := j + #1
+j := t6
 GOTO L3 
 LABEL L5 :
+t7 := i + #1
+i := t7
+GOTO L0 
+LABEL L2 :
+RETURN #0
+FUNCTION f :
+PARAM a
+ii := #0
+jj := #1
+LABEL L6 :
+IF #10 >= ii GOTO L7
+GOTO L8 
+LABEL L7 :
+t8 := #0 * #40
+t9 := a + t8
+t10 := ii * #4
+t11 := t9 + t10
+*t11 := ii
+t12 := ii + #1
+ii := t12
+GOTO L6 
+LABEL L8 :
+LABEL L9 :
+IF #10 != jj GOTO L10
+GOTO L11 
+LABEL L10 :
+t13 := #1 * #40
+t14 := a + t13
+t15 := jj * #4
+t16 := t14 + t15
+t17 := #0 * #40
+t18 := a + t17
+t19 := jj - #1
+t20 := t19 * #4
+t21 := t18 + t20
+t22 := *t21
+t23 := #0 * #40
+t24 := a + t23
+t25 := jj * #4
+t26 := t24 + t25
+t27 := *t26
+t28 := t22 * t27
+*t16 := t28
+t29 := jj + #1
+jj := t29
+GOTO L9 
+LABEL L11 :
+RETURN #0
+FUNCTION main :
+DEC a2 80
+t31 := &a2
+ARG t31
+t32 := CALL f
+t34 := &a2
+ARG t34
+t35 := CALL printArr
 RETURN #0
