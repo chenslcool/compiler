@@ -558,6 +558,7 @@ void handleExtDef(struct TreeNode *r)
         handleCompst(r->children[2], typePtr); //传入类型指针，遇到return判断返回值是否相容
 
         funcPtr->varSpace = curSpace;
+        printf("function : %s, spaceSize = %d\n", funcPtr->name, curSpace);
     }
     else
     {
@@ -777,22 +778,6 @@ struct FieldList *handleDecList(struct TreeNode *r, struct Type *typePtr, int in
     {
         //DecList -> Dec
         struct FieldList *FL = handleDec(r->children[0], typePtr, inStruc);
-        //记录函数内局部变量
-        if(inStruc == 0){
-            //将此变量和对于ebp的位置的偏移联系
-            struct Variable *varPtr = searchVariableTable(FL->name);
-            assert(varPtr != NULL);
-            varPtr->offsetToEbp = curSpace;
-            //增加curSpace
-            if(FL->type->kind == BASIC){
-                curSpace += INT_FLOAT_SIZE;
-            }
-            else{
-                assert(FL->type->kind == ARRAY);
-                int sz = FL->type->info.array->elemWidth * FL->type->info.array->numElem;
-                curSpace += sz;
-            }
-        }
         return FL;
     }
     else
@@ -899,6 +884,7 @@ struct FieldList *handleDec(struct TreeNode *r, struct Type *typePtr, int inStru
             printError(5, r->children[1]->line, "Assignop mismatch.");
         }
     }
+    
     //不在结构体中才插入变量表
     if (inStruc == 0)
     {
@@ -913,6 +899,21 @@ struct FieldList *handleDec(struct TreeNode *r, struct Type *typePtr, int inStru
         {
             //报错，变量重定义
             printError(3, FL->line, "Variable redefined.");
+        }
+
+        //记录函数内局部变量
+        //将此变量和对于ebp的位置的偏移联系
+        struct Variable *varPtr = searchVariableTable(FL->name);
+        assert(varPtr != NULL);
+        varPtr->offsetToEbp = curSpace;
+        //增加curSpace
+        if(FL->type->kind == BASIC){
+            curSpace += INT_FLOAT_SIZE;
+        }
+        else{
+            assert(FL->type->kind == ARRAY);
+            int sz = FL->type->info.array->elemWidth * FL->type->info.array->numElem;
+            curSpace += sz;
         }
     }
     return FL;
@@ -2134,7 +2135,7 @@ void appendInterCodeToList(struct InterCode *ICNodePtr)
     //ICNodePtr只是一个节点
     //for debug
     // ICNodePtr->next = ICNodePtr->prev = ICNodePtr;
-    printICPtr(stderr, ICNodePtr); //for debug
+    // printICPtr(stderr, ICNodePtr); //for debug
     if (InterCodeList == NULL)
     {
         //初始情况
