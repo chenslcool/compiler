@@ -7,6 +7,8 @@ int hashType = 1;
 struct Variable *variableTable[TABLE_SIZE];
 struct Structure *structureTable[TABLE_SIZE];
 struct Func *funcTable[TABLE_SIZE];
+struct Pair *pairTable[TABLE_SIZE];
+
 struct InterCode *InterCodeList = NULL;
 
 struct Type *intTypePtr = NULL;
@@ -15,6 +17,8 @@ struct Type *intTypePtr = NULL;
 int nrTmpVar = 0;
 //中间代码中跳转标号数量
 int nrLabel = 0;
+//当前函数局部变量所占空间,4的倍数
+int curSpace = 0;
 
 int calculateWidth(struct Type *typePtr)
 {
@@ -295,6 +299,14 @@ void insertStructureTable(struct Structure *structure)
     structureTable[idx] = structure;
 }
 
+void insertPairTable(struct Pair* pairPtr){
+    assert(pairPtr != NULL);
+    unsigned idx = pairPtr->tmpNo % TABLE_SIZE;
+    struct Pair* head = pairTable[idx];
+    pairPtr->next = head;
+    pairTable[idx] = pairPtr;
+}
+
 void insertVariableTable(struct Variable *variable)
 {
     assert(variable != NULL);
@@ -316,6 +328,15 @@ struct Func *searchFuncTable(char *name)
     {
         head = head->next;
         numHashSearch++;
+    }
+    return head;
+}
+
+struct Pair* searchPairTable(int tmpNo){
+    unsigned idx = tmpNo % TABLE_SIZE;
+    struct Pair* head = pairTable[idx];
+    while(head != NULL && head->tmpNo != tmpNo){
+        head = head->next;
     }
     return head;
 }
@@ -497,9 +518,10 @@ void handleExtDef(struct TreeNode *r)
     }
     else if ((r->numChildren == 3) && (r->children[2]->type == Node_Compst))
     {
+        curSpace = 0;//清空
         //ExtDef -> Specifier FunDec Compst
         struct Func *funcPtr = handleFuncDec(r->children[1], typePtr);
-
+        
         //增加ICNode
         struct InterCode *ICFuncPtr = newICNode(1);
         ICFuncPtr->kind = IC_FUNC_DEF;
@@ -534,6 +556,8 @@ void handleExtDef(struct TreeNode *r)
         // printFuncDec(funcPtr,0);
 
         handleCompst(r->children[2], typePtr); //传入类型指针，遇到return判断返回值是否相容
+
+        funcPtr->varSpace = curSpace;
     }
     else
     {
@@ -752,7 +776,24 @@ struct FieldList *handleDecList(struct TreeNode *r, struct Type *typePtr, int in
     if (r->numChildren == 1)
     {
         //DecList -> Dec
-        return handleDec(r->children[0], typePtr, inStruc);
+        struct FieldList *FL = handleDec(r->children[0], typePtr, inStruc);
+        //记录函数内局部变量
+        if(inStruc == 0){
+            //将此变量和对于ebp的位置的偏移联系
+            struct Variable *varPtr = searchVariableTable(FL->name);
+            assert(varPtr != NULL);
+            varPtr->offsetToEbp = curSpace;
+            //增加curSpace
+            if(FL->type->kind == BASIC){
+                curSpace += INT_FLOAT_SIZE;
+            }
+            else{
+                assert(FL->type->kind == ARRAY);
+                int sz = FL->type->info.array->elemWidth * FL->type->info.array->numElem;
+                curSpace += sz;
+            }
+        }
+        return FL;
     }
     else
     {
@@ -802,6 +843,7 @@ struct FieldList *handleDec(struct TreeNode *r, struct Type *typePtr, int inStru
     }
     else
     {
+        //varDec = Exp
         if (inStruc)
         {
             //结构体内不能初始化
@@ -2439,6 +2481,13 @@ void initReadAndWrite()
 int getNextTmpNo()
 {
     //先返回后加
+    //临时变量也当成函数局部变量，也要记录相对ebp的位置
+    struct Pair* pairPtr = (struct Pair*)malloc(sizeof(struct Pair));
+    pairPtr->tmpNo = nrTmpVar;
+    pairPtr->offset = curSpace;
+    pairPtr->next = NULL;
+    insertPairTable(pairPtr);
+    curSpace += INT_FLOAT_SIZE;
     return nrTmpVar++;
 }
 

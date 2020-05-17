@@ -41,6 +41,7 @@ struct Func
     struct Type* retType;//返回值类型
     struct FieldList* params;//形参列表，参数的name并不重要
     struct Func* next;//在表项中的下一个
+    int varSpace;//变量、临时变量空间
 };
 
 //数组类型
@@ -62,6 +63,7 @@ struct Variable
     struct Type* varType;
     int firstAppearanceLine;//第一次出现的行号
     struct Variable* next; 
+    int offsetToEbp;
 };
 
 //结构体表项:仅包含有名结构体
@@ -147,6 +149,14 @@ struct ArgNode
     struct ArgNode* prev;
 };
 
+//记录临时变量以及偏移的数据结构
+struct Pair
+{   
+    int tmpNo;
+    int offset;
+    struct Pair* next;
+};
+
 
 struct NameNode** getNameHashSet(int sz);
 int nameSetContains(struct NameNode** set,int sz,char* name);
@@ -157,11 +167,13 @@ void freeSet(struct NameNode** set,int sz);
 struct Func* searchFuncTable(char*name); 
 struct Structure* searchStructureTable(char*name);
 struct Variable* searchVariableTable(char*name); 
+struct Pair* searchPairTable(int tmpNo);
 
 //插入表项,名字在结构体中已经有了
 void insertFuncTable(struct Func* func);
 void insertStructureTable(struct Structure*structure);
 void insertVariableTable(struct Variable*variable);
+void insertPairTable(struct Pair* pairPtr);
 
 //根据一个只有一个节点的创建出一个变量符号，用于插入变量表
 struct Variable* getVarPtr(struct FieldList*FL,int line);
