@@ -2029,8 +2029,8 @@ struct FieldList *handleArgs(struct TreeNode *r, struct ArgNode **argList)
     if (r->numChildren == 1)
     {
         struct Operand *op = newOperand();
-        op->kind = OPEARND_TMP_VAR;
-        op->info.tmpVarNo = getNextTmpNo();
+        // op->kind = OPEARND_TMP_VAR;
+        // op->info.tmpVarNo = getNextTmpNo();
         struct ArgNode *curNode = (struct ArgNode *)malloc(sizeof(struct ArgNode));
         curNode->op = op;
         //Args -> Exp
