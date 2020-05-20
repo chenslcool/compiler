@@ -25,12 +25,14 @@ int main(int argc,char** argv){
                 fprintf(stderr, "Cannot translate: Code contains variables or parameters of structure type.\n");
             }
             else{
-                FILE* fout = fopen(argv[2],"w");
+                FILE* fout_ir = fopen(argv[2],"w");
+                FILE* fout_s = fopen(argv[3],"w");
                 initReadAndWrite();
                 handleProgram(root);
-                printInterCodeList(fout);fclose(fout);
-                translateToMachineCode(stdout);
-                
+                printInterCodeList(fout_ir);
+                fclose(fout_ir);
+                translateToMachineCode(fout_s);
+                fclose(fout_s);
             }
             // fprintf(stderr,"HashSize = %d,numHashSearch = %d\n",TABLE_SIZE,numHashSearch);
         }

@@ -1,9 +1,24 @@
 FUNCTION f :
-PARAM i1
-PARAM i2
-PARAM i3
-PARAM i4
-PARAM i5
-PARAM i6
-i1 := i2
-RETURN i3
+PARAM p1
+PARAM p2
+PARAM p3
+PARAM p4
+PARAM p5
+PARAM p6
+t0 := p2 + p6
+RETURN t0
+FUNCTION main :
+READ t1
+i1 := t1
+READ t2
+i2 := t2
+ARG #6
+ARG #5
+ARG #4
+ARG #3
+ARG #2
+ARG #1
+t3 := CALL f
+i1 := t3
+WRITE i1
+RETURN #0

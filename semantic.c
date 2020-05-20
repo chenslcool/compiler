@@ -570,7 +570,7 @@ void handleExtDef(struct TreeNode *r)
         handleCompst(r->children[2], typePtr); //传入类型指针，遇到return判断返回值是否相容
 
         funcPtr->varSpace = curSpace;
-        printf("function : %s, spaceSize = %d\n", funcPtr->name, curSpace);
+        fprintf(stderr, "function : %s, spaceSize = %d\n", funcPtr->name, curSpace);
     }
     else
     {
@@ -2646,16 +2646,17 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
         //为参数和局部变量、临时变量腾出空间
         subSp(fd, curFuncPtr->varSpace);
         //把参数从寄存器、栈复制到这里
-        for(int i = 0;i < curFuncPtr->nrParams;++i){
-            int belowFpOffset =  (i + 1) * 4; //0(%fp)是 old fp
-            if(i <= 3){
-                //从寄存器a0-a3复制
-                fprintf(fd, "\tsw $a%d, -%d($fp)\n", i, belowFpOffset);
+        for(int i = curFuncPtr->nrParams - 1;i >= 0;--i){
+            //如果是倒数四个之内，从寄存器找
+            int belowFpOffset =  (i + 1) * 4;
+            if(curFuncPtr->nrParams - i <= 4){
+                //从寄存器拿
+                int retIdx = curFuncPtr->nrParams - 1 - i;
+                fprintf(fd, "\tsw $a%d, -%d($fp)\n", retIdx, belowFpOffset);
             }
             else{
-                //从栈,位置为(i - 4) *4 + 8 + fp
-                int aboveFpOffset =  (i - 4) * 4 + 8;
-                //先复制到t0,再从t0复制
+                //从栈拿
+                int aboveFpOffset =  i * 4 + 8;
                 fprintf(fd, "\tlw $t0, %d($fp)\n", aboveFpOffset);
                 fprintf(fd, "\tsw $t0, -%d($fp)\n", belowFpOffset);
             }
