@@ -527,7 +527,7 @@ void handleExtDef(struct TreeNode *r)
         struct Func *funcPtr = handleFuncDec(r->children[1], typePtr);
         //把函数的参数个数记录一下会更好
         int nrParams = 0;
-        struct FieldList * params = funcPtr->params;
+        struct FieldList *params = funcPtr->params;
         while (params != NULL)
         {
             nrParams++;
@@ -1029,7 +1029,7 @@ struct FieldList *handleParamDec(struct TreeNode *r)
         varPtr->isParam = 1; //是形参
         //参数也放在栈中
         varPtr->offsetToEbp = curSpace;
-        curSpace += INT_FLOAT_SIZE;//都是+4
+        curSpace += INT_FLOAT_SIZE; //都是+4
         insertVariableTable(varPtr);
     }
     return FL;
@@ -2535,74 +2535,89 @@ void printDataReadWrite(FILE *fd)
 {
     fprintf(fd, ".data\n_prompt: .asciiz \"Enter an integer:\"\n_ret: .asciiz \"\\n\"\n.globl main\n.text\n\n");
     fprintf(fd, "read:\n\tli $v0, 4\n\tla $a0, _prompt\n\tsyscall\n\tli $v0, 5\n\tsyscall\n\tjr $ra\n\n");
-    fprintf(fd, "write:\n\tli $v0, 1\n\tsyscall\n\tli $v0, 4\n\tla $a0, _ret\n\tsyscall\n\tmove $v0, $0\n\tjr $ra\n\n");
+    fprintf(fd, "write:\n\tli $v0, 1\n\tsyscall\n\tli $v0, 4\n\tla $a0, _ret\n\tsyscall\n\tmove $v0, $0\n\tjr $ra\n");
 }
 
-void subSp(FILE *fd, int sz){
+void subSp(FILE *fd, int sz)
+{
     fprintf(fd, "\tsubu $sp, $sp, %d\n", sz);
 }
 
-void addSp(FILE *fd, int sz){
+void addSp(FILE *fd, int sz)
+{
     fprintf(fd, "\taddu $sp, $sp, %d\n", sz);
 }
 
-void pushFp(FILE *fd){
+void pushFp(FILE *fd)
+{
     //先腾出空间再写
     subSp(fd, 4);
     fprintf(fd, "\tsw $fp, 0($sp)\n");
 }
 
-void popFp(FILE *fd){
+void popFp(FILE *fd)
+{
     //先腾出空间再写
     fprintf(fd, "\tlw $fp, 0($sp)\n");
     addSp(fd, 4);
 }
 
-int getOffsetToFp(struct Operand* op){
+int getOffsetToFp(struct Operand *op)
+{
     //查找局部变量/参数 或者 临时变量相对fp的偏移
-    if(op->kind == OPEARND_VAR){
-        struct Variable * varPtr = searchVariableTable(op->info.varName);
+    if (op->kind == OPEARND_VAR)
+    {
+        struct Variable *varPtr = searchVariableTable(op->info.varName);
         assert(varPtr != NULL);
-        return varPtr->offsetToEbp + 4;//因为0(fp)是plf fp
+        return varPtr->offsetToEbp + 4; //因为0(fp)是plf fp
     }
-    else{
+    else
+    {
         //临时变量
         assert(op->kind == OPEARND_ADDR || op->kind == OPEARND_TMP_VAR);
-        struct Pair* pairPtr = searchPairTable(op->info.tmpVarNo);
+        struct Pair *pairPtr = searchPairTable(op->info.tmpVarNo);
         assert(pairPtr != NULL);
         return pairPtr->offset + 4;
     }
 }
 
-void loadOffsetFpToTi(FILE*fd, int offset, int i){
+void loadOffsetFpToTi(FILE *fd, int offset, int i)
+{
     //offset 有正负!
     fprintf(fd, "\tlw $t%d, %d($fp)\n", i, offset);
 }
 
-void storeTiToOffsetFp(FILE*fd, int offset, int i){
+void storeTiToOffsetFp(FILE *fd, int offset, int i)
+{
     //offset 有正负!
     fprintf(fd, "\tsw $t%d, %d($fp)\n", i, offset);
 }
 
-void storeV0ToOffsetFp(FILE*fd, int offset){
+void storeV0ToOffsetFp(FILE *fd, int offset)
+{
     //offset 有正负!
     fprintf(fd, "\tsw $v0, %d($fp)\n", offset);
 }
 
-void loadOperandToTi(FILE* fd, struct Operand* op, int i){
+void loadOperandToTi(FILE *fd, struct Operand *op, int i)
+{
     //常量、临时变量、参数、地址
     switch (op->kind)
     {
-    case OPEARND_CONSTANT:{
+    case OPEARND_CONSTANT:
+    {
         fprintf(fd, "\tli $t%d, %d\n", i, op->info.constantVal);
-    }break;
+    }
+    break;
     case OPEARND_ADDR:
     case OPEARND_VAR:
-    case OPEARND_TMP_VAR:{
+    case OPEARND_TMP_VAR:
+    {
         //临时变量在栈中
         int offset = getOffsetToFp(op);
         loadOffsetFpToTi(fd, -offset, i);
-    }break;
+    }
+    break;
     default:
         fprintf(stderr, "loadOperandToTi error!\n");
         assert(0);
@@ -2611,25 +2626,28 @@ void loadOperandToTi(FILE* fd, struct Operand* op, int i){
 }
 
 //将ti寄存器的值push
-void pushTi(FILE* fd,int i){
+void pushTi(FILE *fd, int i)
+{
     subSp(fd, 4);
     fprintf(fd, "\tsw $t%d, 0($sp)\n", i);
 }
 
 //push ra
-void pushRa(FILE* fd){
+void pushRa(FILE *fd)
+{
     subSp(fd, 4);
     fprintf(fd, "\tsw $ra, 0($sp)\n");
 }
 
-void popRa(FILE* fd){
+void popRa(FILE *fd)
+{
     fprintf(fd, "\tlw $ra, 0($sp)\n");
     addSp(fd, 4);
 }
 
 void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
 {
-    static struct Func *curFuncPtr = NULL;//在return中，要回收函数栈空间等操作，需要用到函数信息
+    static struct Func *curFuncPtr = NULL; //在return中，要回收函数栈空间等操作，需要用到函数信息
     static int preNrArg = 0;
     switch (curPtr->kind)
     {
@@ -2639,24 +2657,27 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
         curFuncPtr = searchFuncTable(curPtr->operands[0]->info.funcName);
         assert(curFuncPtr != NULL);
         //函数名称
-        fprintf(fd, "%s:\n", curFuncPtr->name);
+        fprintf(fd, "\n%s:\n", curFuncPtr->name);
         //push fp
         pushFp(fd);
-        fprintf(fd, "\tmove $fp, $sp\n");//设置fp
+        fprintf(fd, "\tmove $fp, $sp\n"); //设置fp
         //为参数和局部变量、临时变量腾出空间
         subSp(fd, curFuncPtr->varSpace);
         //把参数从寄存器、栈复制到这里
-        for(int i = curFuncPtr->nrParams - 1;i >= 0;--i){
+        for (int i = curFuncPtr->nrParams - 1; i >= 0; --i)
+        {
             //如果是倒数四个之内，从寄存器找
-            int belowFpOffset =  (i + 1) * 4;
-            if(curFuncPtr->nrParams - i <= 4){
+            int belowFpOffset = (i + 1) * 4;
+            if (curFuncPtr->nrParams - i <= 4)
+            {
                 //从寄存器拿
                 int retIdx = curFuncPtr->nrParams - 1 - i;
                 fprintf(fd, "\tsw $a%d, -%d($fp)\n", retIdx, belowFpOffset);
             }
-            else{
+            else
+            {
                 //从栈拿
-                int aboveFpOffset =  i * 4 + 8;
+                int aboveFpOffset = i * 4 + 8;
                 fprintf(fd, "\tlw $t0, %d($fp)\n", aboveFpOffset);
                 fprintf(fd, "\tsw $t0, -%d($fp)\n", belowFpOffset);
             }
@@ -2681,7 +2702,7 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
         //会出现右侧是立即数，怎么办呢? 使用li将立即数放入寄存器t1中? 考虑写一个loadToRegI函数，将operand的值让如指定寄存器中
         //x := y.
         //但是对于 1.临时变量 2. 局部变量/参数 的查找是不同的
-        loadOperandToTi(fd, curPtr->operands[1], 0);//右侧值存到t0
+        loadOperandToTi(fd, curPtr->operands[1], 0); //右侧值存到t0
         int xOffsetToFp = getOffsetToFp(curPtr->operands[0]);
         storeTiToOffsetFp(fd, -xOffsetToFp, 0);
     }
@@ -2750,7 +2771,7 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
         loadOperandToTi(fd, curPtr->operands[1], 0);
         loadOperandToTi(fd, curPtr->operands[2], 1);
         fprintf(fd, "\tdiv $t0, $t1\n");
-        fprintf(fd, "\tmflo $t2\t");
+        fprintf(fd, "\tmflo $t2\t\n");
         //t2放入x
         int xOffset = getOffsetToFp(curPtr->operands[0]);
         storeTiToOffsetFp(fd, -xOffset, 2);
@@ -2763,7 +2784,7 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
         //把 y的值取出放入t0
         loadOperandToTi(fd, curPtr->operands[1], 0);
         //对t0取值放入t1
-        fprintf(fd, "\tlw $t1, 0($t0)\t");
+        fprintf(fd, "\tlw $t1, 0($t0)\n");
         //t1写入x
         int xOffset = getOffsetToFp(curPtr->operands[0]);
         storeTiToOffsetFp(fd, -xOffset, 1);
@@ -2825,19 +2846,20 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
         assert((curPtr->numOperands == 1));
         //ARG x
         //看这是第几个连续的ARG, >= 5就要push
-        if(preNrArg >= 4){
+        if (preNrArg >= 4)
+        {
             //存到t0
             loadOperandToTi(fd, curPtr->operands[0], 0);
             //push t0
             pushTi(fd, 0);
         }
-        else{
+        else
+        {
             //存到T_preNrArg寄存器中
             //存到t0
             loadOperandToTi(fd, curPtr->operands[0], 0);
             fprintf(fd, "\tmove $a%d, $t0\n", preNrArg);
         }
-        
     }
     break;
     case IC_CALL:
@@ -2847,18 +2869,19 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
         //x := call f
         //push %ra
         pushRa(fd);
-        fprintf(fd, "\tjal %s\n",curPtr->operands[1]->info.funcName);
+        fprintf(fd, "\tjal %s\n", curPtr->operands[1]->info.funcName);
         //结果在$v0中
         int xOffset = getOffsetToFp(curPtr->operands[0]);
         storeV0ToOffsetFp(fd, -xOffset);
         //pop $ra
         popRa(fd);
         //回收ra,arg的空间sp。注意sp的+sz是每个ARG一次次-4完成的
-        struct Func * funcPtr = searchFuncTable(curPtr->operands[1]->info.funcName);
+        struct Func *funcPtr = searchFuncTable(curPtr->operands[1]->info.funcName);
         assert(funcPtr != NULL);
         //仅当nrParam >= 5才需要,否则都是在寄存器中
         int sz = (funcPtr->nrParams - 4) * INT_FLOAT_SIZE;
-        if(sz > 0){
+        if (sz > 0)
+        {
             addSp(fd, sz);
         }
     }
@@ -2866,25 +2889,72 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
     case IC_RELOP_GOTO:
     {
         assert(curPtr->numOperands == 3);
+        //if x relop y goto z
+        //把x,y的放入t0,t1
+        loadOperandToTi(fd, curPtr->operands[0], 0);
+        loadOperandToTi(fd, curPtr->operands[1], 1);
+        switch (curPtr->relop)
+        {
+        case LT:
+        {
+            fprintf(fd, "\tblt ");
+        }
+        break;
+        case LEQ:
+        {
+            fprintf(fd, "\tble ");
+        }
+        break;
+        case GT:
+        {
+            fprintf(fd, "\tbgt ");
+        }
+        break;
+        case GEQ:
+        {
+            fprintf(fd, "\tbge ");
+        }
+        break;
+        case NEQ:
+        {
+            fprintf(fd, "\tbne ");
+        }
+        break;
+        case EQ:
+        {
+            fprintf(fd, "\tbeq ");
+        }
+        break;
+        default:
+        {
+            assert(0);
+        }
+        break;
+        }
+        fprintf(fd, "$t0, $t1, L%d\n", curPtr->operands[2]->info.laeblNo);
     }
     break;
     case IC_LABEL_DEF:
     {
         assert(curPtr->numOperands == 1);
+        fprintf(fd, "L%d:\n", curPtr->operands[0]->info.laeblNo);
     }
     break;
     case IC_GOTO:
     {
         assert(curPtr->numOperands == 1);
+        fprintf(fd, "\tj L%d\n", curPtr->operands[0]->info.laeblNo);
     }
     break;
     default:
         break;
     }
-    if(curPtr->kind == IC_ARG){
-        preNrArg++;    
+    if (curPtr->kind == IC_ARG)
+    {
+        preNrArg++;
     }
-    else{
+    else
+    {
         preNrArg = 0;
     }
 }
