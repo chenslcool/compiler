@@ -2574,19 +2574,63 @@ int getOffsetToFp(struct Operand* op){
     }
 }
 
-void storeOffsetFpToTi(FILE*fd, int offset, int i){
+void loadOffsetFpToTi(FILE*fd, int offset, int i){
+    //offset 有正负!
+    fprintf(fd, "\tlw $t%d, %d($fp)\n", i, offset);
+}
+
+void storeTiToOffsetFp(FILE*fd, int offset, int i){
     //offset 有正负!
     fprintf(fd, "\tsw $t%d, %d($fp)\n", i, offset);
 }
 
-void loadTiToOffsetFp(FILE*fd, int offset, int i){
+void storeV0ToOffsetFp(FILE*fd, int offset){
     //offset 有正负!
-    fprintf(fd, "\tlw $t%d, %d($fp)\n", i, offset);
+    fprintf(fd, "\tsw $v0, %d($fp)\n", offset);
+}
+
+void loadOperandToTi(FILE* fd, struct Operand* op, int i){
+    //常量、临时变量、参数、地址
+    switch (op->kind)
+    {
+    case OPEARND_CONSTANT:{
+        fprintf(fd, "\tli $t%d, %d\n", i, op->info.constantVal);
+    }break;
+    case OPEARND_ADDR:
+    case OPEARND_VAR:
+    case OPEARND_TMP_VAR:{
+        //临时变量在栈中
+        int offset = getOffsetToFp(op);
+        loadOffsetFpToTi(fd, -offset, i);
+    }break;
+    default:
+        fprintf(stderr, "loadOperandToTi error!\n");
+        assert(0);
+        break;
+    }
+}
+
+//将ti寄存器的值push
+void pushTi(FILE* fd,int i){
+    subSp(fd, 4);
+    fprintf(fd, "\tsw $t%d, 0($sp)\n", i);
+}
+
+//push ra
+void pushRa(FILE* fd){
+    subSp(fd, 4);
+    fprintf(fd, "\tsw $ra, 0($sp)\n");
+}
+
+void popRa(FILE* fd){
+    fprintf(fd, "\tlw $ra, 0($sp)\n");
+    addSp(fd, 4);
 }
 
 void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
 {
     static struct Func *curFuncPtr = NULL;//在return中，要回收函数栈空间等操作，需要用到函数信息
+    static int preNrArg = 0;
     switch (curPtr->kind)
     {
     case IC_FUNC_DEF:
@@ -2634,54 +2678,114 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
     {
         assert(curPtr->numOperands == 2);
         //会出现右侧是立即数，怎么办呢? 使用li将立即数放入寄存器t1中? 考虑写一个loadToRegI函数，将operand的值让如指定寄存器中
-        //赋值的两边是两个变量，临时/局部/参数。但是无所谓，都是在栈中，可以通过fp相对寻址得到。
         //x := y.
         //但是对于 1.临时变量 2. 局部变量/参数 的查找是不同的
+        loadOperandToTi(fd, curPtr->operands[1], 0);//右侧值存到t0
         int xOffsetToFp = getOffsetToFp(curPtr->operands[0]);
-        int yOffsetToFp = getOffsetToFp(curPtr->operands[1]);
-        //把y store到t0
-        storeOffsetFpToTi(fd, -yOffsetToFp, 0);//注意这里offset取负
-        loadTiToOffsetFp(fd, -xOffsetToFp, 0);
+        storeTiToOffsetFp(fd, -xOffsetToFp, 0);
     }
     break;
     case IC_GET_ADDR:
     {
         assert((curPtr->numOperands == 2) && (curPtr->operands[1]->kind == OPEARND_VAR));
+        //x := &y
+        //y是一个变量，他在栈是有相对于fp的位置的，可以用subu x fp offset 实现
+        int yOffset = getOffsetToFp(curPtr->operands[1]);
+        int xOffset = getOffsetToFp(curPtr->operands[0]);
+        //把fp - offset的值存在t0中
+        fprintf(fd, "\tsubu $t0, $fp, %d\n", yOffset);
+        //把t0的值写在x的位置
+        storeTiToOffsetFp(fd, -xOffset, 0);
     }
     break;
     case IC_PLUS:
     {
         assert((curPtr->numOperands == 3));
+        //x := y + z
+        //把y,z的放入t0,t1
+        loadOperandToTi(fd, curPtr->operands[1], 0);
+        loadOperandToTi(fd, curPtr->operands[2], 1);
+        //相加放入t2
+        fprintf(fd, "\tadd $t2, $t0, $t1\n");
+        //t2放入x
+        int xOffset = getOffsetToFp(curPtr->operands[0]);
+        storeTiToOffsetFp(fd, -xOffset, 2);
     }
     break;
     case IC_SUB:
     {
         assert((curPtr->numOperands == 3));
+        assert((curPtr->numOperands == 3));
+        //x := y - z
+        //把y,z的放入t0,t1
+        loadOperandToTi(fd, curPtr->operands[1], 0);
+        loadOperandToTi(fd, curPtr->operands[2], 1);
+        //相减放入t2
+        fprintf(fd, "\tsub $t2, $t0, $t1\n");
+        //t2放入x
+        int xOffset = getOffsetToFp(curPtr->operands[0]);
+        storeTiToOffsetFp(fd, -xOffset, 2);
     }
     break;
     case IC_MUL:
     {
         assert((curPtr->numOperands == 3));
+        //x := y * z
+        //把y,z的放入t0,t1
+        loadOperandToTi(fd, curPtr->operands[1], 0);
+        loadOperandToTi(fd, curPtr->operands[2], 1);
+        //相减放入t2
+        fprintf(fd, "\tmul $t2, $t0, $t1\n");
+        //t2放入x
+        int xOffset = getOffsetToFp(curPtr->operands[0]);
+        storeTiToOffsetFp(fd, -xOffset, 2);
     }
     break;
     case IC_DIV:
     {
         assert((curPtr->numOperands == 3));
+        //x := y / z
+        //把y,z的放入t0,t1
+        loadOperandToTi(fd, curPtr->operands[1], 0);
+        loadOperandToTi(fd, curPtr->operands[2], 1);
+        fprintf(fd, "\tdiv $t0, $t1\n");
+        fprintf(fd, "\tmflo $t2\t");
+        //t2放入x
+        int xOffset = getOffsetToFp(curPtr->operands[0]);
+        storeTiToOffsetFp(fd, -xOffset, 2);
     }
     break;
     case IC_GET_VALUE:
     {
         assert((curPtr->numOperands == 2));
+        //x := *y
+        //把 y的值取出放入t0
+        loadOperandToTi(fd, curPtr->operands[1], 0);
+        //对t0取值放入t1
+        fprintf(fd, "\tlw $t1, 0($t0)\t");
+        //t1写入x
+        int xOffset = getOffsetToFp(curPtr->operands[0]);
+        storeTiToOffsetFp(fd, -xOffset, 1);
     }
     break;
     case IC_WRITE_TO_ADDR:
     {
         assert((curPtr->numOperands == 2) && (curPtr->operands[0]->kind == OPEARND_ADDR));
+        //把x,y的放入t0,t1
+        loadOperandToTi(fd, curPtr->operands[0], 0);
+        loadOperandToTi(fd, curPtr->operands[1], 1);
+        //*x  := y
+        fprintf(fd, "\tsw $t1, 0($t0)\n");
     }
     break;
     case IC_RETURN:
     {
         assert((curPtr->numOperands == 1));
+        //TODO 设置v0
+        //return x
+        //把返回值x得到存入t0
+        loadOperandToTi(fd, curPtr->operands[0], 0);
+        fprintf(fd, "\tmove $v0, $t0\n");
         //sp加上space
         addSp(fd, curFuncPtr->varSpace);
         //pop fp，恢复old fp
@@ -2693,24 +2797,69 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
     case IC_READ:
     {
         assert((curPtr->numOperands == 1) && (curPtr->operands[0]->kind == OPEARND_TMP_VAR));
+        //read x
+        //call read
+        pushRa(fd);
+        fprintf(fd, "\tjal read\n");
+        int xOffset = getOffsetToFp(curPtr->operands[0]);
+        storeV0ToOffsetFp(fd, -xOffset);
+        //pop $ra
+        popRa(fd);
     }
     break;
     case IC_WRITE:
     {
         assert((curPtr->numOperands == 1));
+        //write x
+        //要取得x放入t0
+        loadOperandToTi(fd, curPtr->operands[0], 0);
+        fprintf(fd, "\tmove $a0, $t0\n");
+        pushRa(fd);
+        fprintf(fd, "\tjal write\n");
+        popRa(fd);
     }
     break;
     case IC_ARG:
     {
         assert((curPtr->numOperands == 1));
-        //实参有两种类型: 1.普通表达式，值已经存在op对应的临时变量中
-        //2. 一维数组Addr。分为从形参得到的数组和局部变量
+        //ARG x
+        //看这是第几个连续的ARG, >= 5就要push
+        if(preNrArg >= 4){
+            //存到t0
+            loadOperandToTi(fd, curPtr->operands[0], 0);
+            //push t0
+            pushTi(fd, 0);
+        }
+        else{
+            //存到T_preNrArg寄存器中
+            //存到t0
+            loadOperandToTi(fd, curPtr->operands[0], 0);
+            fprintf(fd, "\tmove $a%d, $t0\n", preNrArg);
+        }
+        
     }
     break;
     case IC_CALL:
     {
         assert((curPtr->numOperands == 2));
-        //返回值存到一个临时变量
+        //ARG 已经完成了
+        //x := call f
+        //push %ra
+        pushRa(fd);
+        fprintf(fd, "\tjal %s\n",curPtr->operands[1]->info.funcName);
+        //结果在$v0中
+        int xOffset = getOffsetToFp(curPtr->operands[0]);
+        storeV0ToOffsetFp(fd, -xOffset);
+        //pop $ra
+        popRa(fd);
+        //回收ra,arg的空间sp。注意sp的+sz是每个ARG一次次-4完成的
+        struct Func * funcPtr = searchFuncTable(curPtr->operands[1]->info.funcName);
+        assert(funcPtr != NULL);
+        //仅当nrParam >= 5才需要,否则都是在寄存器中
+        int sz = (funcPtr->nrParams - 4) * INT_FLOAT_SIZE;
+        if(sz > 0){
+            addSp(fd, sz);
+        }
     }
     break;
     case IC_RELOP_GOTO:
@@ -2730,5 +2879,11 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
     break;
     default:
         break;
+    }
+    if(curPtr->kind == IC_ARG){
+        preNrArg++;    
+    }
+    else{
+        preNrArg = 0;
     }
 }
