@@ -299,10 +299,11 @@ void insertStructureTable(struct Structure *structure)
     structureTable[idx] = structure;
 }
 
-void insertPairTable(struct Pair* pairPtr){
+void insertPairTable(struct Pair *pairPtr)
+{
     assert(pairPtr != NULL);
     unsigned idx = pairPtr->tmpNo % TABLE_SIZE;
-    struct Pair* head = pairTable[idx];
+    struct Pair *head = pairTable[idx];
     pairPtr->next = head;
     pairTable[idx] = pairPtr;
 }
@@ -332,10 +333,12 @@ struct Func *searchFuncTable(char *name)
     return head;
 }
 
-struct Pair* searchPairTable(int tmpNo){
+struct Pair *searchPairTable(int tmpNo)
+{
     unsigned idx = tmpNo % TABLE_SIZE;
-    struct Pair* head = pairTable[idx];
-    while(head != NULL && head->tmpNo != tmpNo){
+    struct Pair *head = pairTable[idx];
+    while (head != NULL && head->tmpNo != tmpNo)
+    {
         head = head->next;
     }
     return head;
@@ -518,10 +521,19 @@ void handleExtDef(struct TreeNode *r)
     }
     else if ((r->numChildren == 3) && (r->children[2]->type == Node_Compst))
     {
-        curSpace = 0;//清空
+        curSpace = 0; //清空
         //ExtDef -> Specifier FunDec Compst
+        //也要为参数分配空间，在写函数的机器码的时候，要先从寄存器和栈(参数个数>4)中把参数复制到ebp以下
         struct Func *funcPtr = handleFuncDec(r->children[1], typePtr);
-        
+        //把函数的参数个数记录一下会更好
+        int nrParams = 0;
+        struct FieldList * params = funcPtr->params;
+        while (params != NULL)
+        {
+            nrParams++;
+            params = params->next;
+        }
+        funcPtr->nrParams = nrParams;
         //增加ICNode
         struct InterCode *ICFuncPtr = newICNode(1);
         ICFuncPtr->kind = IC_FUNC_DEF;
@@ -884,7 +896,7 @@ struct FieldList *handleDec(struct TreeNode *r, struct Type *typePtr, int inStru
             printError(5, r->children[1]->line, "Assignop mismatch.");
         }
     }
-    
+
     //不在结构体中才插入变量表
     if (inStruc == 0)
     {
@@ -907,10 +919,12 @@ struct FieldList *handleDec(struct TreeNode *r, struct Type *typePtr, int inStru
         assert(varPtr != NULL);
         varPtr->offsetToEbp = curSpace;
         //增加curSpace
-        if(FL->type->kind == BASIC){
+        if (FL->type->kind == BASIC)
+        {
             curSpace += INT_FLOAT_SIZE;
         }
-        else{
+        else
+        {
             assert(FL->type->kind == ARRAY);
             int sz = FL->type->info.array->elemWidth * FL->type->info.array->numElem;
             curSpace += sz;
@@ -1013,6 +1027,9 @@ struct FieldList *handleParamDec(struct TreeNode *r)
     {
         struct Variable *varPtr = getVarPtr(FL, FL->line);
         varPtr->isParam = 1; //是形参
+        //参数也放在栈中
+        varPtr->offsetToEbp = curSpace;
+        curSpace += INT_FLOAT_SIZE;//都是+4
         insertVariableTable(varPtr);
     }
     return FL;
@@ -2483,7 +2500,7 @@ int getNextTmpNo()
 {
     //先返回后加
     //临时变量也当成函数局部变量，也要记录相对ebp的位置
-    struct Pair* pairPtr = (struct Pair*)malloc(sizeof(struct Pair));
+    struct Pair *pairPtr = (struct Pair *)malloc(sizeof(struct Pair));
     pairPtr->tmpNo = nrTmpVar;
     pairPtr->offset = curSpace;
     pairPtr->next = NULL;
@@ -2495,4 +2512,251 @@ int getNextTmpNo()
 int min(int a, int b)
 {
     return a > b ? b : a;
+}
+
+void translateToMachineCode(FILE *fd)
+{
+    if (InterCodeList == NULL)
+    {
+        return;
+    }
+    //先打印数据段、read和write这些
+    printDataReadWrite(fd);
+    struct InterCode *curPtr = InterCodeList;
+    do
+    {
+        //翻译这一句
+        translateInterCodeToMachine(fd, curPtr);
+        curPtr = curPtr->next;
+    } while (curPtr != InterCodeList);
+}
+
+void printDataReadWrite(FILE *fd)
+{
+    fprintf(fd, ".data\n_prompt: .asciiz \"Enter an integer:\"\n_ret: .asciiz \"\\n\"\n.globl main\n.text\n\n");
+    fprintf(fd, "read:\n\tli $v0, 4\n\tla $a0, _prompt\n\tsyscall\n\tli $v0, 5\n\tsyscall\n\tjr $ra\n\n");
+    fprintf(fd, "write:\n\tli $v0, 1\n\tsyscall\n\tli $v0, 4\n\tla $a0, _ret\n\tsyscall\n\tmove $v0, $0\n\tjr $ra\n\n");
+}
+
+void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
+{
+    switch (curPtr->kind)
+    {
+    case IC_FUNC_DEF:
+    {
+        assert(curPtr->numOperands == 1);
+        fprintf(fd, "%s:\n", curPtr->operands[0]->info.funcName);
+    }
+    break;
+    case IC_PARAM:
+    {
+
+        // assert(curPtr->numOperands == 1);
+        // fprintf(fd, "PARAM %s\n", curPtr->operands[0]->info.varName);
+    }
+    break;
+    case IC_DEC:
+    {
+        assert(curPtr->numOperands == 1);
+        fprintf(fd, "DEC %s %d\n", curPtr->operands[0]->info.varName, curPtr->allocSize);
+    }
+    break;
+    case IC_ASSIGN:
+    {
+        assert(curPtr->numOperands == 2);
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " := ");
+        printOperand(fd, curPtr->operands[1]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_GET_ADDR:
+    {
+        assert((curPtr->numOperands == 2) && (curPtr->operands[1]->kind == OPEARND_VAR));
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " := &");
+        printOperand(fd, curPtr->operands[1]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_PLUS:
+    {
+        assert((curPtr->numOperands == 3));
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " := ");
+        printOperand(fd, curPtr->operands[1]);
+        fprintf(fd, " + ");
+        printOperand(fd, curPtr->operands[2]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_SUB:
+    {
+        assert((curPtr->numOperands == 3));
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " := ");
+        printOperand(fd, curPtr->operands[1]);
+        fprintf(fd, " - ");
+        printOperand(fd, curPtr->operands[2]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_MUL:
+    {
+        assert((curPtr->numOperands == 3));
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " := ");
+        printOperand(fd, curPtr->operands[1]);
+        fprintf(fd, " * ");
+        printOperand(fd, curPtr->operands[2]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_DIV:
+    {
+        assert((curPtr->numOperands == 3));
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " := ");
+        printOperand(fd, curPtr->operands[1]);
+        fprintf(fd, " / ");
+        printOperand(fd, curPtr->operands[2]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_GET_VALUE:
+    {
+        assert((curPtr->numOperands == 2));
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " := *");
+        printOperand(fd, curPtr->operands[1]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_WRITE_TO_ADDR:
+    {
+        assert((curPtr->numOperands == 2) && (curPtr->operands[0]->kind == OPEARND_ADDR));
+        fprintf(fd, "*");
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " := ");
+        printOperand(fd, curPtr->operands[1]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_RETURN:
+    {
+        assert((curPtr->numOperands == 1));
+        fprintf(fd, "RETURN ");
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_READ:
+    {
+        assert((curPtr->numOperands == 1) && (curPtr->operands[0]->kind == OPEARND_TMP_VAR));
+        fprintf(fd, "READ ");
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_WRITE:
+    {
+        assert((curPtr->numOperands == 1));
+        fprintf(fd, "WRITE ");
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_ARG:
+    {
+        assert((curPtr->numOperands == 1));
+        //实参有两种类型: 1.普通表达式，值已经存在op对应的临时变量中
+        //2. 一维数组Addr。分为从形参得到的数组和局部变量
+        struct Operand *op = curPtr->operands[0];
+        fprintf(fd, "ARG ");
+        //临时变量或普通变量或者常数
+        printOperand(fd, op);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_CALL:
+    {
+        assert((curPtr->numOperands == 2));
+        //返回值存到一个临时变量
+        assert(curPtr->operands[0]->kind == OPEARND_TMP_VAR);
+        assert(curPtr->operands[1]->kind == OPERAND_FUNC);
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " := CALL %s\n", curPtr->operands[1]->info.funcName);
+    }
+    break;
+    case IC_RELOP_GOTO:
+    {
+        assert(curPtr->numOperands == 3);
+        fprintf(fd, "IF ");
+        printOperand(fd, curPtr->operands[0]);
+        switch (curPtr->relop)
+        {
+        case LT:
+        {
+            fprintf(fd, " < ");
+        }
+        break;
+        case LEQ:
+        {
+            fprintf(fd, " <= ");
+        }
+        break;
+        case GT:
+        {
+            fprintf(fd, " > ");
+        }
+        break;
+        case GEQ:
+        {
+            fprintf(fd, " >= ");
+        }
+        break;
+        case NEQ:
+        {
+            fprintf(fd, " != ");
+        }
+        break;
+        case EQ:
+        {
+            fprintf(fd, " == ");
+        }
+        break;
+        default:
+        {
+            assert(0);
+        }
+        break;
+        }
+        printOperand(fd, curPtr->operands[1]);
+        fprintf(fd, " GOTO ");
+        assert(curPtr->operands[2]->kind == OPERAND_LABEL);
+        printOperand(fd, curPtr->operands[2]);
+        fprintf(fd, "\n");
+    }
+    break;
+    case IC_LABEL_DEF:
+    {
+        assert(curPtr->numOperands == 1);
+        assert(curPtr->operands[0]->kind == OPERAND_LABEL);
+        fprintf(fd, "LABEL ");
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " :\n");
+    }
+    break;
+    case IC_GOTO:
+    {
+        assert(curPtr->numOperands == 1);
+        fprintf(fd, "GOTO ");
+        printOperand(fd, curPtr->operands[0]);
+        fprintf(fd, " \n");
+    }
+    break;
+    default:
+        fprintf(stderr, "printICPtr() need fix!\n");
+        break;
+    }
 }

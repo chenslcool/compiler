@@ -1,5 +1,27 @@
-FUNCTION add :
-PARAM temp
+.data
+_prompt: .asciiz "Enter an integer:"
+_ret: .asciiz "\n"
+.globl main
+.text
+
+read:
+	li $v0, 4
+	la $a0, _prompt
+	syscall
+	li $v0, 5
+	syscall
+	jr $ra
+
+write:
+	li $v0, 1
+	syscall
+	li $v0, 4
+	la $a0, _ret
+	syscall
+	move $v0, $0
+	jr $ra
+
+add:
 t0 := #0 * #4
 t1 := temp + t0
 t2 := *t1
@@ -8,7 +30,7 @@ t4 := temp + t3
 t5 := *t4
 t6 := t2 + t5
 RETURN t6
-FUNCTION main :
+main:
 DEC op 8
 DEC r 8
 i := #0
@@ -52,5 +74,9 @@ j := #0
 GOTO L0 
 LABEL L2 :
 RETURN #0
-FUNCTION f2 :
+f3:
+t26 := tt2 + #2
+tt1 := t26
+RETURN #7
+f2:
 RETURN #0

@@ -42,6 +42,7 @@ struct Func
     struct FieldList* params;//形参列表，参数的name并不重要
     struct Func* next;//在表项中的下一个
     int varSpace;//变量、临时变量空间
+    int nrParams;//参数个数
 };
 
 //数组类型
@@ -282,4 +283,11 @@ void printICPtr(FILE* fd, struct InterCode * curPtr);
 void initReadAndWrite();
 
 int min(int a,int b);
+
+//将中间代码翻译为机器码
+void translateToMachineCode(FILE *fd);
+
+void printDataReadWrite(FILE *fd);
+
+void translateInterCodeToMachine(FILE *fd, struct InterCode* ICptr);
 #endif

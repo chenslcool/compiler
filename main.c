@@ -28,7 +28,8 @@ int main(int argc,char** argv){
                 FILE* fout = fopen(argv[2],"w");
                 initReadAndWrite();
                 handleProgram(root);
-                printInterCodeList(fout);
+                // printInterCodeList(stdout);
+                translateToMachineCode(fout);
                 fclose(fout);
             }
             // fprintf(stderr,"HashSize = %d,numHashSearch = %d\n",TABLE_SIZE,numHashSearch);
