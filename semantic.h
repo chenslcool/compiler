@@ -290,4 +290,9 @@ void translateToMachineCode(FILE *fd);
 void printDataReadWrite(FILE *fd);
 
 void translateInterCodeToMachine(FILE *fd, struct InterCode* ICptr);
+
+void subSp(FILE *fd, int sz);
+
+void addSp(FILE *fd, int sz);
+
 #endif

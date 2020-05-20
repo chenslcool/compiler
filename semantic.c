@@ -2538,132 +2538,166 @@ void printDataReadWrite(FILE *fd)
     fprintf(fd, "write:\n\tli $v0, 1\n\tsyscall\n\tli $v0, 4\n\tla $a0, _ret\n\tsyscall\n\tmove $v0, $0\n\tjr $ra\n\n");
 }
 
+void subSp(FILE *fd, int sz){
+    fprintf(fd, "\tsubu $sp, $sp, %d\n", sz);
+}
+
+void addSp(FILE *fd, int sz){
+    fprintf(fd, "\taddu $sp, $sp, %d\n", sz);
+}
+
+void pushFp(FILE *fd){
+    //先腾出空间再写
+    subSp(fd, 4);
+    fprintf(fd, "\tsw $fp, 0($sp)\n");
+}
+
+void popFp(FILE *fd){
+    //先腾出空间再写
+    fprintf(fd, "\tlw $fp, 0($sp)\n");
+    addSp(fd, 4);
+}
+
+int getOffsetToFp(struct Operand* op){
+    //查找局部变量/参数 或者 临时变量相对fp的偏移
+    if(op->kind == OPEARND_VAR){
+        struct Variable * varPtr = searchVariableTable(op->info.varName);
+        assert(varPtr != NULL);
+        return varPtr->offsetToEbp + 4;//因为0(fp)是plf fp
+    }
+    else{
+        //临时变量
+        assert(op->kind == OPEARND_ADDR || op->kind == OPEARND_TMP_VAR);
+        struct Pair* pairPtr = searchPairTable(op->info.tmpVarNo);
+        assert(pairPtr != NULL);
+        return pairPtr->offset + 4;
+    }
+}
+
+void storeOffsetFpToTi(FILE*fd, int offset, int i){
+    //offset 有正负!
+    fprintf(fd, "\tsw $t%d, %d($fp)\n", i, offset);
+}
+
+void loadTiToOffsetFp(FILE*fd, int offset, int i){
+    //offset 有正负!
+    fprintf(fd, "\tlw $t%d, %d($fp)\n", i, offset);
+}
+
 void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
 {
+    static struct Func *curFuncPtr = NULL;//在return中，要回收函数栈空间等操作，需要用到函数信息
     switch (curPtr->kind)
     {
     case IC_FUNC_DEF:
     {
         assert(curPtr->numOperands == 1);
-        fprintf(fd, "%s:\n", curPtr->operands[0]->info.funcName);
+        curFuncPtr = searchFuncTable(curPtr->operands[0]->info.funcName);
+        assert(curFuncPtr != NULL);
+        //函数名称
+        fprintf(fd, "%s:\n", curFuncPtr->name);
+        //push fp
+        pushFp(fd);
+        fprintf(fd, "\tmove $fp, $sp\n");//设置fp
+        //为参数和局部变量、临时变量腾出空间
+        subSp(fd, curFuncPtr->varSpace);
+        //把参数从寄存器、栈复制到这里
+        for(int i = 0;i < curFuncPtr->nrParams;++i){
+            int belowFpOffset =  (i + 1) * 4; //0(%fp)是 old fp
+            if(i <= 3){
+                //从寄存器a0-a3复制
+                fprintf(fd, "\tsw $a%d, -%d($fp)\n", i, belowFpOffset);
+            }
+            else{
+                //从栈,位置为(i - 4) *4 + 8 + fp
+                int aboveFpOffset =  (i - 4) * 4 + 8;
+                //先复制到t0,再从t0复制
+                fprintf(fd, "\tlw $t0, %d($fp)\n", aboveFpOffset);
+                fprintf(fd, "\tsw $t0, -%d($fp)\n", belowFpOffset);
+            }
+        }
     }
     break;
     case IC_PARAM:
     {
-
-        // assert(curPtr->numOperands == 1);
-        // fprintf(fd, "PARAM %s\n", curPtr->operands[0]->info.varName);
+        assert(curPtr->numOperands == 1);
+        //do nothing
     }
     break;
     case IC_DEC:
     {
         assert(curPtr->numOperands == 1);
-        fprintf(fd, "DEC %s %d\n", curPtr->operands[0]->info.varName, curPtr->allocSize);
+        //do nothing
     }
     break;
     case IC_ASSIGN:
     {
         assert(curPtr->numOperands == 2);
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " := ");
-        printOperand(fd, curPtr->operands[1]);
-        fprintf(fd, "\n");
+        //会出现右侧是立即数，怎么办呢? 使用li将立即数放入寄存器t1中? 考虑写一个loadToRegI函数，将operand的值让如指定寄存器中
+        //赋值的两边是两个变量，临时/局部/参数。但是无所谓，都是在栈中，可以通过fp相对寻址得到。
+        //x := y.
+        //但是对于 1.临时变量 2. 局部变量/参数 的查找是不同的
+        int xOffsetToFp = getOffsetToFp(curPtr->operands[0]);
+        int yOffsetToFp = getOffsetToFp(curPtr->operands[1]);
+        //把y store到t0
+        storeOffsetFpToTi(fd, -yOffsetToFp, 0);//注意这里offset取负
+        loadTiToOffsetFp(fd, -xOffsetToFp, 0);
     }
     break;
     case IC_GET_ADDR:
     {
         assert((curPtr->numOperands == 2) && (curPtr->operands[1]->kind == OPEARND_VAR));
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " := &");
-        printOperand(fd, curPtr->operands[1]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_PLUS:
     {
         assert((curPtr->numOperands == 3));
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " := ");
-        printOperand(fd, curPtr->operands[1]);
-        fprintf(fd, " + ");
-        printOperand(fd, curPtr->operands[2]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_SUB:
     {
         assert((curPtr->numOperands == 3));
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " := ");
-        printOperand(fd, curPtr->operands[1]);
-        fprintf(fd, " - ");
-        printOperand(fd, curPtr->operands[2]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_MUL:
     {
         assert((curPtr->numOperands == 3));
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " := ");
-        printOperand(fd, curPtr->operands[1]);
-        fprintf(fd, " * ");
-        printOperand(fd, curPtr->operands[2]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_DIV:
     {
         assert((curPtr->numOperands == 3));
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " := ");
-        printOperand(fd, curPtr->operands[1]);
-        fprintf(fd, " / ");
-        printOperand(fd, curPtr->operands[2]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_GET_VALUE:
     {
         assert((curPtr->numOperands == 2));
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " := *");
-        printOperand(fd, curPtr->operands[1]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_WRITE_TO_ADDR:
     {
         assert((curPtr->numOperands == 2) && (curPtr->operands[0]->kind == OPEARND_ADDR));
-        fprintf(fd, "*");
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " := ");
-        printOperand(fd, curPtr->operands[1]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_RETURN:
     {
         assert((curPtr->numOperands == 1));
-        fprintf(fd, "RETURN ");
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, "\n");
+        //sp加上space
+        addSp(fd, curFuncPtr->varSpace);
+        //pop fp，恢复old fp
+        popFp(fd);
+        //跳转到$ra
+        fprintf(fd, "\tjr $ra\n");
     }
     break;
     case IC_READ:
     {
         assert((curPtr->numOperands == 1) && (curPtr->operands[0]->kind == OPEARND_TMP_VAR));
-        fprintf(fd, "READ ");
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_WRITE:
     {
         assert((curPtr->numOperands == 1));
-        fprintf(fd, "WRITE ");
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_ARG:
@@ -2671,92 +2705,30 @@ void translateInterCodeToMachine(FILE *fd, struct InterCode *curPtr)
         assert((curPtr->numOperands == 1));
         //实参有两种类型: 1.普通表达式，值已经存在op对应的临时变量中
         //2. 一维数组Addr。分为从形参得到的数组和局部变量
-        struct Operand *op = curPtr->operands[0];
-        fprintf(fd, "ARG ");
-        //临时变量或普通变量或者常数
-        printOperand(fd, op);
-        fprintf(fd, "\n");
     }
     break;
     case IC_CALL:
     {
         assert((curPtr->numOperands == 2));
         //返回值存到一个临时变量
-        assert(curPtr->operands[0]->kind == OPEARND_TMP_VAR);
-        assert(curPtr->operands[1]->kind == OPERAND_FUNC);
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " := CALL %s\n", curPtr->operands[1]->info.funcName);
     }
     break;
     case IC_RELOP_GOTO:
     {
         assert(curPtr->numOperands == 3);
-        fprintf(fd, "IF ");
-        printOperand(fd, curPtr->operands[0]);
-        switch (curPtr->relop)
-        {
-        case LT:
-        {
-            fprintf(fd, " < ");
-        }
-        break;
-        case LEQ:
-        {
-            fprintf(fd, " <= ");
-        }
-        break;
-        case GT:
-        {
-            fprintf(fd, " > ");
-        }
-        break;
-        case GEQ:
-        {
-            fprintf(fd, " >= ");
-        }
-        break;
-        case NEQ:
-        {
-            fprintf(fd, " != ");
-        }
-        break;
-        case EQ:
-        {
-            fprintf(fd, " == ");
-        }
-        break;
-        default:
-        {
-            assert(0);
-        }
-        break;
-        }
-        printOperand(fd, curPtr->operands[1]);
-        fprintf(fd, " GOTO ");
-        assert(curPtr->operands[2]->kind == OPERAND_LABEL);
-        printOperand(fd, curPtr->operands[2]);
-        fprintf(fd, "\n");
     }
     break;
     case IC_LABEL_DEF:
     {
         assert(curPtr->numOperands == 1);
-        assert(curPtr->operands[0]->kind == OPERAND_LABEL);
-        fprintf(fd, "LABEL ");
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " :\n");
     }
     break;
     case IC_GOTO:
     {
         assert(curPtr->numOperands == 1);
-        fprintf(fd, "GOTO ");
-        printOperand(fd, curPtr->operands[0]);
-        fprintf(fd, " \n");
     }
     break;
     default:
-        fprintf(stderr, "printICPtr() need fix!\n");
         break;
     }
 }

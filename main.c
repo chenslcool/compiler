@@ -28,9 +28,9 @@ int main(int argc,char** argv){
                 FILE* fout = fopen(argv[2],"w");
                 initReadAndWrite();
                 handleProgram(root);
-                // printInterCodeList(stdout);
-                translateToMachineCode(fout);
-                fclose(fout);
+                printInterCodeList(fout);fclose(fout);
+                translateToMachineCode(stdout);
+                
             }
             // fprintf(stderr,"HashSize = %d,numHashSearch = %d\n",TABLE_SIZE,numHashSearch);
         }
