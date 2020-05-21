@@ -917,10 +917,10 @@ struct FieldList *handleDec(struct TreeNode *r, struct Type *typePtr, int inStru
         //将此变量和对于ebp的位置的偏移联系
         struct Variable *varPtr = searchVariableTable(FL->name);
         assert(varPtr != NULL);
-        varPtr->offsetToEbp = curSpace;
         //增加curSpace
         if (FL->type->kind == BASIC)
         {
+            varPtr->offsetToEbp = curSpace;
             curSpace += INT_FLOAT_SIZE;
         }
         else
@@ -928,6 +928,8 @@ struct FieldList *handleDec(struct TreeNode *r, struct Type *typePtr, int inStru
             assert(FL->type->kind == ARRAY);
             int sz = FL->type->info.array->elemWidth * FL->type->info.array->numElem;
             curSpace += sz;
+            //由于栈是从高向低生长，因此把收个元素放在最低
+            varPtr->offsetToEbp = curSpace - INT_FLOAT_SIZE;
         }
     }
     return FL;
