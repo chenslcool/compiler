@@ -570,7 +570,7 @@ void handleExtDef(struct TreeNode *r)
         handleCompst(r->children[2], typePtr); //传入类型指针，遇到return判断返回值是否相容
 
         funcPtr->varSpace = curSpace;
-        fprintf(stderr, "function : %s, spaceSize = %d\n", funcPtr->name, curSpace);
+        // fprintf(stderr, "function : %s, spaceSize = %d\n", funcPtr->name, curSpace);
     }
     else
     {
