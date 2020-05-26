@@ -29,7 +29,7 @@ int main(int argc,char** argv){
                 FILE* fout_s = fopen(argv[2],"w");
                 initReadAndWrite();
                 handleProgram(root);
-                // printInterCodeList(fout_ir);
+                // printInterCodeList(fout_s);
                 // fclose(fout_ir);
                 translateToMachineCode(fout_s);
                 fclose(fout_s);

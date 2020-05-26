@@ -62,19 +62,19 @@ badInteger {badDecimal}|{badOctal}|{badHexical}
 }
 "-" {
     //根据前面是否为表达式区分负号和减号
-	if(preIsExp == 1)
-    {
+	// if(preIsExp == 1)
+    // {
         preIsExp = 0;
         preSetYylval(Node_MINUS);
         // printf("减号:line = %d",yylineno);
         return MINUS;
-    }
-    else{
-        preIsExp = 0;
-        preSetYylval(Node_NEGETIVE);
-        // printf("负号:line = %d",yylineno);
-        return NEGETIVE;
-    }
+    // }
+    // else{
+    //     preIsExp = 0;
+    //     preSetYylval(Node_NEGETIVE);
+    //     // printf("负号:line = %d",yylineno);
+    //     return NEGETIVE;
+    // }
 }
 "*" {
 	preIsExp = 0;

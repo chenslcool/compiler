@@ -1365,7 +1365,7 @@ struct Type *handleExp(struct TreeNode *r, struct Operand *place, int needGetVal
         }
         else
         {
-            //Exp -> Neg Exp
+            //Exp -> MINUS Exp
             //判断Exp 是不是NULL或者basic类型
             //t1=0，不是临时变量，就是常量
             struct Operand *t1 = newOperand();
